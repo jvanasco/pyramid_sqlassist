@@ -57,44 +57,6 @@ def get_engine(name='!default'):
 
 
 
-def __dbSessionRemove( engine_name ):
-    """
-        Legacy Function.
-        Probably not needed.
-        ---
-        removes a session from the stash. this is the heavy lifter.
-    """
-    _engine= get_engine(engine_name)
-    _engine.sa_scoped_session.remove()
-
-
-def dbSessionRemoveAll():
-    """
-        Legacy Function.
-        Probably not needed.
-        ---
-        removes all our sessions from the stash.
-        this was a cleanup activity once-upon-a-time
-    """
-    log.debug("sqlassist#dbSessionRemoveAll()" )
-    for engine_name in __engine_registry['engines'].keys():
-        __dbSessionRemove( engine_name )
-
-
-def dbSessionInit():
-    """
-        Legacy Function.
-        Probably not needed.
-        ---
-        removes all our sessions from the stash if they exist.  they shouldn't
-    """
-    log.debug("sqlassist#dbSessionInit()" )
-    for engine_name in __engine_registry['engines'].keys():
-        __dbSessionRemove( engine_type )
-
-
-
-
 def init_engine( engine_name , sa_engine , default=False , reflect=False , use_zope=False , sa_sessionmaker_params=None ):
     """
     Creates new engines in the meta object and init the tables for each package
@@ -143,6 +105,19 @@ def dbSession( engine_name ):
     return session
 
 
+def dbSessionCleanup():
+    """
+        removes all our sessions from the stash.
+        this was a cleanup activity once-upon-a-time
+    """
+    log.debug("sqlassist#dbSessionCleanup()" )
+    for engine_name in __engine_registry['engines'].keys():
+        _engine= get_engine(engine_name)
+        log.debug( "sqlassist#dbSessionCleanup(%s)" % engine_name )
+        print "sqlassist#dbSessionCleanup(%s)" % engine_name 
+        _engine.sa_scoped_session.close()
+
+
 
 class UtilityObject(object):
     __table_pkey__= None
@@ -188,6 +163,36 @@ class UtilityObject(object):
             item= dbSession.query(self.__class__).filter( getattr( self.__class__ , column ).ilike(seed) ).first()
         return item
 
+
+    def get__range( self, dbSession , start=0, limit=None , sort_direction='asc' , order_col=None , order_case_sensitive=True , filters=[] , debug_query=False):
+        """gets a range of items"""
+        if not order_col:
+            order_col= 'id'
+        query= dbSession.query(self.__class__)
+        for filter in filters:
+            query= query.filter( filter )
+        for col in order_col.split(','):
+            # declared columns do not have self.__class__.c
+            # reflected columns did in earlier sqlalchemy
+            col= getattr( self.__class__, col )
+            if sort_direction == 'asc':
+                if order_case_sensitive:
+                    query= query.order_by( col.asc() )
+                else:
+                    query= query.order_by( sqlalchemy.sql.func.lower( col ).asc() )
+            elif sort_direction == 'desc':
+                if order_case_sensitive:
+                    query= query.order_by( col.desc() )
+                else:
+                    query= query.order_by( sqlalchemy.sql.func.lower( col ).desc() )
+            else:
+                raise ValueError('invalid sort direction')
+        query= query.offset(start).limit(limit)
+        results= query.all()
+        if debug_query:
+            log.debug(query)
+            log.debug(results)
+        return results
 
 
 
@@ -248,6 +253,43 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
             logging.getLogger('sqlalchemy.engine').setLevel(_level)
 
 
+#####
+#####  playing with reset code
+#####
+
+
+def cleanup_callback(request):
+    """request.add_finished_callback(sqlassist.cleanup_callback)"""
+    dbSessionCleanup()
+
+    
+## or we could do this with tweens...
+
+
+
+from pyramid.tweens import EXCVIEW
+
+def includeme(config):
+    """set up tweens"""
+    return
+    config.add_tween('pyramid_sqlassist.sqlassist_tween_factory', under=EXCVIEW)
+
+import re
+re_excludes= re.compile("/(img|_debug|js|css)")
+
+def sqlassist_tween_factory(handler, registry):
+
+    def sqlassist_tween(request):
+        if re.match( re_excludes , request.path_info ):
+            return handler(request)
+        try:
+            log.debug("sqlassist_tween_factory - dbSessionCleanup()")
+            print "sqlassist_tween_factory - dbSessionCleanup()"
+            dbSessionCleanup()
+            return handler(request)
+        except :
+            raise
+    return sqlassist_tween
             
 
 def initialize_sql(engine_name,population_callback=None,metadata=None):

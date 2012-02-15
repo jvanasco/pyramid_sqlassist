@@ -37,6 +37,7 @@ TODO
 
 6.  -- there's a bunch of legacy stuff that hasn't been used/integrated.  ie: under pylons i had middleware that would kill all the dbsessions on exit.  the supporting functions are here, but not used
 	fixing
+	
 
 
 
@@ -58,7 +59,7 @@ in your env.ini you specify multiple sqlalchemy urls, which might be to differen
 	import sqlassist
 	def initialize_database(settings):
 		engine_reader = sqlalchemy.engine_from_config(settings, prefix="sqlalchemy_reader.")
-		sqlassist.init_engine('reader',engine_reader,default=True,reflect=myapp.models, use_zope=True)
+		sqlassist.init_engine('reader',engine_reader,default=True,reflect=myapp.models, use_zope=False)
 		engine_writer = sqlalchemy.engine_from_config(settings, prefix="sqlalchemy_writer.")
 		sqlassist.init_engine('writer',engine_writer,default=False,reflect=myapp.models, use_zope=True)
 		
@@ -133,7 +134,6 @@ catching errors if you're trying to support both transaction.commit() and dbsess
 	you must explicitly call a rollback after the Assertion Error
 	
 
-	
 in case you want to use declared tables...
 
 	in your models.py
