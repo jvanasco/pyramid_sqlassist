@@ -1,4 +1,5 @@
+0.0.6
+	added pyramid classifier
 
 0.0.5
 	initial repo tracking (was gist)
-	

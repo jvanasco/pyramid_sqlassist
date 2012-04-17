@@ -194,17 +194,23 @@ class UtilityObject(object):
             log.debug(results)
         return results
 
+    def columns_as_dict(self):
+        return dict((col.name, getattr(self, col.name)) for col in sqlalchemy_orm.class_mapper(self.__class__).mapped_table.c)
+
 
 
 class ReflectedTable(UtilityObject): 
     """Base class for database objects that are mapped to tables by reflection.
-       Have your various model classes inherit from this class.  If class.__tablename__ is defined, it will reflect
+       Have your various model classes inherit from this class.  
+       If class.__tablename__ is defined, it will reflect that table.
+       If class.__primarykey__ is defined, it will set that as the primary key.
 
        Example:
           class Useraccount(ReflectedTable):
               __tablename__ = "useraccount"
     """ 
     __tablename__ = None
+    __primarykey__ = None
     __sa_stash__ = {}
 
 
@@ -241,9 +247,21 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
             _level= logging.getLogger('sqlalchemy.engine').getEffectiveLevel()
             if _level < logging.WARN :
                 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
-            
+
             table= sqlalchemy.Table( table_name, metadata, autoload=True , autoload_with=sa_engine )
             _class.__sa_stash__[engine_name]= table
+
+            _primarykey = _class.__primarykey__
+            primarykey= []
+            if _primarykey:
+                if isinstance( _primarykey, types.StringTypes ):
+                    primarykey.append( getattr( table , _primarykey ) )
+                elif isinstance( _primarykey, types.ListTypes ):
+                    for _column_name in _primarykey :
+                        primarykey.append( getattr( table , _column_name ) )
+            raise ValueError('ok!')
+            print _primarykey
+
             if primary:
                 sqlalchemy_orm.mapper( _class , table ) 
             else:
