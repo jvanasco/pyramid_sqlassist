@@ -9,8 +9,8 @@ import sqlalchemy.orm as sqlalchemy_orm
 
 try:
    import transaction
-   from zope.sqlalchemy import ZopeTransactionExtension 
-except ImportError: 
+   from zope.sqlalchemy import ZopeTransactionExtension
+except ImportError:
    ZopeTransactionExtension= None
    transaction= None
 
@@ -36,7 +36,7 @@ class EngineWrapper( object ):
         self.sa_sessionmaker= sa_sessionmaker
         self.sa_sessionmaker_params= None
         self.sa_scoped_session= sa_scoped_session
-        
+
     def init_session( self , sa_sessionmaker_params ):
         if sa_sessionmaker_params:
             self.sa_sessionmaker_params= sa_sessionmaker_params
@@ -49,7 +49,7 @@ def get_engine(name='!default'):
     """retrieves an engine from the registry"""
     log.debug("sqlassist#get_engine()" )
     try:
-        if name == '!default': 
+        if name == '!default':
             name = __engine_registry['!default']
         return __engine_registry['engines'][name]
     except KeyError:
@@ -63,10 +63,10 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
     """
     log.debug("sqlassist#init_engine()" )
     log.info("Initializing Engine : %s" % (engine_name) )
-    
+
     # configure the engine around a wrapper
     wrapped = EngineWrapper( engine_name , sa_engine=sa_engine )
-    
+
     # these are some defaults that i once used for writers
     # loggers would autocommit as true
     # not sure this is needed with zope
@@ -76,26 +76,26 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
     for i in _sa_sessionmaker_params.keys():
         if i not in sa_sessionmaker_params:
             sa_sessionmaker_params[i]= _sa_sessionmaker_params[i]
-    
+
     if use_zope:
         if ZopeTransactionExtension is None:
             raise ImportError('ZopeTransactionExtension was not imported earlier')
         if 'extension' in sa_sessionmaker_params:
             raise ValueError('I raise an error when you call init_engine() with `use_zope=True` and an `extension` in sa_sessionmaker_params. Sorry.')
         sa_sessionmaker_params['extension']= ZopeTransactionExtension()
-        
+
     wrapped.init_session(sa_sessionmaker_params)
-    
+
     # stash the wrapper
     __engine_registry['engines'][engine_name]= wrapped
     if default:
         __engine_registry['default']= engine_name
-        
-        
+
+
     # finally, reflect if needed
     if reflect:
         reflect_tables( reflect , primary=default , metadata=__metadata , engine_name=engine_name , sa_engine=sa_engine )
-    
+
 
 
 def dbSession( engine_name ):
@@ -114,7 +114,6 @@ def dbSessionCleanup():
     for engine_name in __engine_registry['engines'].keys():
         _engine= get_engine(engine_name)
         log.debug( "sqlassist#dbSessionCleanup(%s)" % engine_name )
-        print "sqlassist#dbSessionCleanup(%s)" % engine_name 
         _engine.sa_scoped_session.close()
 
 
@@ -199,16 +198,16 @@ class UtilityObject(object):
 
 
 
-class ReflectedTable(UtilityObject): 
+class ReflectedTable(UtilityObject):
     """Base class for database objects that are mapped to tables by reflection.
-       Have your various model classes inherit from this class.  
+       Have your various model classes inherit from this class.
        If class.__tablename__ is defined, it will reflect that table.
        If class.__primarykey__ is defined, it will set that as the primary key.
 
        Example:
           class Useraccount(ReflectedTable):
               __tablename__ = "useraccount"
-    """ 
+    """
     __tablename__ = None
     __primarykey__ = None
     __sa_stash__ = {}
@@ -216,15 +215,15 @@ class ReflectedTable(UtilityObject):
 
 def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None , engine_name=None ):
     """this reflects tables via sqlalchemy.  recursively goes through the application's model package looking for classes that inherit from ReflectedTable
-    
+
         app_model- the package you want to reflect.  pass in a package, not a string
-        
+
         Good:
             reflect_tables( myapp.models , primary=True )
-        
+
         Bad - this won't work at all:
             reflect_tables( 'myapp.models' , primary=True )
-        
+
     """
     log.debug("sqlassist#reflect_tables(%s)" % app_model )
     to_reflect = []
@@ -238,7 +237,7 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
                 continue
             if issubclass( module_element , ReflectedTable ):
                 to_reflect.append( module_element )
-    for _class in to_reflect: 
+    for _class in to_reflect:
         table_name = _class.__tablename__
         if table_name:
             log.info("Reflecting : %s (table: %s)" % (_class , table_name) )
@@ -263,9 +262,9 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
             print _primarykey
 
             if primary:
-                sqlalchemy_orm.mapper( _class , table ) 
+                sqlalchemy_orm.mapper( _class , table )
             else:
-                sqlalchemy_orm.mapper( _class , table , non_primary=True ) 
+                sqlalchemy_orm.mapper( _class , table , non_primary=True )
 
             # return logging to it's former state
             logging.getLogger('sqlalchemy.engine').setLevel(_level)
@@ -280,7 +279,7 @@ def cleanup_callback(request):
     """request.add_finished_callback(sqlassist.cleanup_callback)"""
     dbSessionCleanup()
 
-    
+
 ## or we could do this with tweens...
 
 
@@ -308,7 +307,7 @@ def sqlassist_tween_factory(handler, registry):
         except :
             raise
     return sqlassist_tween
-            
+
 
 def initialize_sql(engine_name,population_callback=None,metadata=None):
     if metadata:
