@@ -135,7 +135,11 @@ class UtilityObject(object):
 
     def get__by__column__lower( self, dbSession, column , search , allow_many=False ):
         """gets items from the database based on a lowercase version of the column. useful for situations where you have a function index on a table, such as indexing on the lower version of an email addresses."""
-        items= dbSession.query(self.__class__).filter( sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ) == search.lower() ).all()
+        items= dbSession.query(self.__class__)\
+            .filter(\
+                sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ) == search.lower() 
+            )\
+            .all()
         if items:
             if not allow_many:
                 if len(items) > 1 :
@@ -149,11 +153,21 @@ class UtilityObject(object):
 
     def get__by__column__similar( self, dbSession , column , seed , prefix_only=True):
         """seaches for a name column entry with the submitted seed prefix"""
-        search_template= "%s%%"
-        if not prefix_only:
-            search_template= "%%%s%%"
-        return dbSession.query(self.__class__).filter( (getattr( self.__class__ , column)).ilike( search_template % seed ) ).order_by( getattr( self.__class__ , column ) ).all()
-
+        query = dbSession.query(self.__class__)
+        if prefix_only :
+            query = query.filter(\
+                sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ).startswith( seed.lower() )
+            )
+        else :
+            query = query.filter(\
+                sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ).contains( seed.lower() )
+            )
+        results = query\
+            .order_by( getattr( self.__class__ , column ).asc() )\
+            .all()
+        return results
+            
+            
 
     def get__by__column__exact_then_ilike( self, dbSession, column, seed ):
         """ seaches for an exact, then case-insensitive version of the name column"""
