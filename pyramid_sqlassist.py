@@ -207,6 +207,7 @@ class UtilityObject(object):
             log.debug(results)
         return results
 
+
     def columns_as_dict(self):
         return dict((col.name, getattr(self, col.name)) for col in sqlalchemy_orm.class_mapper(self.__class__).mapped_table.c)
 
@@ -252,6 +253,7 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
             if issubclass( module_element , ReflectedTable ):
                 to_reflect.append( module_element )
     for _class in to_reflect:
+        raise ValueError('ReflectedTable inheritance does not work well right now.')
         table_name = _class.__tablename__
         if table_name:
             log.info("Reflecting : %s (table: %s)" % (_class , table_name) )
@@ -272,9 +274,6 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
                 elif isinstance( _primarykey, types.ListTypes ):
                     for _column_name in _primarykey :
                         primarykey.append( getattr( table , _column_name ) )
-            raise ValueError('ok!')
-            print _primarykey
-
             if primary:
                 sqlalchemy_orm.mapper( _class , table )
             else:
@@ -292,6 +291,91 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
 def cleanup_callback(request):
     """request.add_finished_callback(sqlassist.cleanup_callback)"""
     dbSessionCleanup()
+
+
+
+
+class DbSessionsContainer(object):
+    """
+        DbSessionsContainer allows you to store and manage a sqlassist interface
+        
+        -- on __init__ , it attaches a sqlassist.cleanup_callback to the request
+        -- it creates, inits, and stores a `reader` and `writer` database handle
+        -- it provides 'get_' methods for reader and writer, so they can be provided to functions that do lazy setups downstream 
+        
+        recommended usage is configuring a class-based pyramid view with the following attribute
+        
+            self.request.dbSession= sqlassist.DbSessionsContainer(self.request)
+        
+        and example usages:
+            
+            establish a connection on demand :
+                self.request.dbSession.reader.query( do stuff , yay )
+                
+            configure a CachingApi with a potential database reader 
+                cachingApi = CachingApi( database_reader_fetch = self.request.dbSession.get_reader )
+                
+        rule of thumb:
+
+            when using db connection , utilize dbSession.reader
+            when setting up an object , utilize dbSession.get_reader and memoize the reader connection
+
+    """
+    _any = None
+    _logger= None
+    _reader= None
+    _writer= None
+
+
+    def __init__(self,request):
+        request.add_finished_callback(cleanup_callback)
+
+
+    @property
+    def any(self):
+        if self._any is None :
+            self._any = self.get_any()
+        return self._any
+
+    def get_any( self ):
+        for i in ( self.reader , self.writer ):
+            if i is not None:
+                return i
+        raise ValueError('No dbSession to return')
+        
+
+    @property
+    def reader(self):
+        if self._reader is None :
+            self._reader = dbSession("reader")
+            self._reader.rollback()
+        return self._reader
+    
+    def get_reader(self):
+        return self.reader
+
+
+    @property
+    def writer(self):
+        if self._writer is None :
+            self._writer = dbSession("writer")
+            self._writer.rollback()
+        return self._writer
+    
+    def get_writer(self):
+        return self.writer
+
+
+    @property
+    def logger(self):
+        if self._logger is None :
+            self._logger = dbSession("logger")
+        return self._logger
+    
+    def get_logger(self):
+        return self.logger
+
+
 
 
 ## or we could do this with tweens...

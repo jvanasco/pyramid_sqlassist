@@ -1,3 +1,6 @@
+0.0.8
+	added DbSessionsContainer , which allows you to store and manage a sqlassist interface
+
 0.0.7
 	making this production usable by removing the non-bind paramter sql searching ( possible attack vector )
 
