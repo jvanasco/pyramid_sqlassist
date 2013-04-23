@@ -27,7 +27,6 @@ Sections of this code are taken from or instpired by:
 
 
 # Usage
-=====
 
 in your env.ini you specify multiple sqlalchemy urls, which might be to different dbs , or the same db but with different permissions
 
@@ -101,7 +100,6 @@ in your handlers, you have this ( sqlalchemy is only imported to grab an excepti
 
 
 # sqlassist.DbSessionsContainer
-=============================
 
 allows you to store and manage a sqlassist interface
 
@@ -128,7 +126,6 @@ rule of thumb:
 
 
 # UtilityObject
-=============
 
 If you inherit from this class, your SqlAlchemy objects have some convenience methods:
 
@@ -146,11 +143,10 @@ If you inherit from this class, your SqlAlchemy objects have some convenience me
 
 
 # Another important note...
-==========================
 
 ## DbSessionsContainer
 
-this convenience class ONLY deals with 3 connections right now :
+This convenience class ONLY deals with 3 connections right now :
 
 	* reader
 	* writer
@@ -170,7 +166,6 @@ This behavior is not driven by the actual SqlAlchemy configuration-  though yes,
 
 
 # Caveats
-========
 
 ## $$COMMIT$$
 
@@ -213,8 +208,7 @@ this is disabled right now.  it's totally janky.  someone else can fix it if the
 
 
 
-TODO
-====
+# TODO
 
 1.  -- this is really ugly , it's patched together from a few different projects that work under sqlalchemy .4/.5
 	-- this does work in .6/.7, but it doesn't integrate anything new
