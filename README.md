@@ -1,5 +1,5 @@
 sqlassist
-~~~~~~~~~
+=========
 
 SqlAssist offers **experimental** support for SqlAlchemy under Pyramid.
 
