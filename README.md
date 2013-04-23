@@ -10,6 +10,7 @@ There is no testing, no guarantee, no nothing.  The API may change wildly.  This
 Help / Direction is always appreciated
 
 The challenge is to provide for both:
+
 	1. Reflecting Tables ( ie, not authoring a bunch of python class information for dozens of existing database tables )
 	2. Supporting multiple database connections ( read, write, log, etc ) for replicated cluster setups
     3. Support for Declared Tables happened in v0.3
@@ -17,14 +18,15 @@ The challenge is to provide for both:
 	5. Having an alternative to Pyramid's automatic transaction handling ( sometimes you want multiple transactions in a request, or to handle these things yourself )
 
 Sections of this code are taken from or instpired by:
-	- Mike Orr's package 'sqlahelper'
-	- Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
-	- pyramid's @reify and set_request_property attributes
-	- this was originally based on findmeon's pylons based opensocialnetwork library
+
+	* Mike Orr's package 'sqlahelper'
+	* Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
+	* pyramid's @reify and set_request_property attributes
+	* this was originally based on findmeon's pylons based opensocialnetwork library
 
 
 
-Usage
+# Usage
 =====
 
 in your env.ini you specify multiple sqlalchemy urls, which might be to different dbs , or the same db but with different permissions
@@ -34,6 +36,7 @@ in your env.ini you specify multiple sqlalchemy urls, which might be to differen
 
 
 /__init__.py:main
+
 	models.initialize_database(settings)
 
 
@@ -51,15 +54,15 @@ in your env.ini you specify multiple sqlalchemy urls, which might be to differen
 
 /models/actual_models.py
 
-		from sqlassist import DeclaredTable
-		import sqlalchemy as sa
+	from sqlassist import DeclaredTable
+	import sqlalchemy as sa
 
-		class Group(DeclaredTable):
-			__tablename__ = 'groups'
+	class Group(DeclaredTable):
+		__tablename__ = 'groups'
 
-			id = sa.Column(sa.Integer, primary_key=True)
-			name = sa.Column(sa.Unicode(255), nullable=False)
-			description = sa.Column(sa.Text, nullable=False)
+		id = sa.Column(sa.Integer, primary_key=True)
+		name = sa.Column(sa.Unicode(255), nullable=False)
+		description = sa.Column(sa.Text, nullable=False)
 
 
 
@@ -97,10 +100,10 @@ in your handlers, you have this ( sqlalchemy is only imported to grab an excepti
 			$$COMMIT$$
 
 
-sqlassist.DbSessionsContainer
+# sqlassist.DbSessionsContainer
 =============================
 
- allows you to store and manage a sqlassist interface
+allows you to store and manage a sqlassist interface
 
 	* on __init__ , it attaches a sqlassist.cleanup_callback to the request
 	* it creates, inits, and stores a `reader` , `writer` and `logger` Lazy-loaded/memoized database connections
@@ -124,7 +127,7 @@ rule of thumb:
 	when setting up an object , utilize dbSession.get_reader and memoize the reader connection
 
 
-UtilityObject
+# UtilityObject
 =============
 
 If you inherit from this class, your SqlAlchemy objects have some convenience methods:
@@ -142,62 +145,71 @@ If you inherit from this class, your SqlAlchemy objects have some convenience me
 
 
 
-Another important note...
+# Another important note...
 ==========================
 
+## DbSessionsContainer
 
-	DbSessionsContainer
-		this convenience class ONLY deals with 3 connections right now :
-			reader
-			writer
-			logger
+this convenience class ONLY deals with 3 connections right now :
 
-		If you have more/different names - subclass , or create a patch to deal with dynamic names.  I didn't have time for that.
+	* reader
+	* writer
+	* logger
 
-		The reader and writer classes will start with an automatic rollback.
-		the logger will not.
+If you have more/different names - subclass , or create a patch to deal with dynamic names.  I didn't have time for that.
 
-		This behavior is not driven by the actual SqlAlchemy configuration-  though yes, it should be.
+The reader and writer classes will start with an automatic rollback.
 
+The logger will not.
 
-
-
+This behavior is not driven by the actual SqlAlchemy configuration-  though yes, it should be.
 
 
-Caveats
+
+
+
+
+# Caveats
 ========
 
-# $$COMMIT$$
-	if you're using zope & transaction modules :
-		- you need to call "transaction.commit"
-	if you're not using zope & transaction modules
-		- you need to call "dbession_writer.commit()"
+## $$COMMIT$$
 
-# Rollbacks
-	you want to call rollback on the specific dbSessions to control what is in each one
+if you're using zope & transaction modules :
 
-# catching exceptions if you're trying to support both transaction.commit() and dbsession.commit()
+	* you need to call "transaction.commit"
 
-	let's say you do this:
+if you're not using zope & transaction modules :
 
-		try:
-			dbSession_writer_1.add(object1)
-			dbSession_writer_1.commit()
-		except AssertionError , e:
-			print "Should fail because zope wants this"
+	* you need to call "dbession_writer.commit()"
 
-		# add to writer
-		dbSession_writer_2.add(object2)
+## Rollbacks
 
-		# commit
-		transaction.commit()
+you want to call rollback on the specific dbSessions to control what is in each one
 
-	in this event, both object1 and object2 will be committed by transaction.commit()
-	you must explicitly call a rollback after the Assertion Error
+## catching exceptions if you're trying to support both transaction.commit() and dbsession.commit()
+
+let's say you do this:
+
+	try:
+		dbSession_writer_1.add(object1)
+		dbSession_writer_1.commit()
+	except AssertionError , e:
+		print "Should fail because zope wants this"
+
+	# add to writer
+	dbSession_writer_2.add(object2)
+
+	# commit
+	transaction.commit()
+
+in this event, both object1 and object2 will be committed by transaction.commit()
+
+You must explicitly call a rollback after the Assertion Error
 
 
 # Reflected Tables
-	this is disabled right now.  it's totally janky.  someone else can fix it
+
+this is disabled right now.  it's totally janky.  someone else can fix it if they want
 
 
 
@@ -207,4 +219,5 @@ TODO
 1.  -- this is really ugly , it's patched together from a few different projects that work under sqlalchemy .4/.5
 	-- this does work in .6/.7, but it doesn't integrate anything new
 	fixing
+
 2.  still playing with reflected tables , both the __sa_stash__ storage and how they're autoloaded
