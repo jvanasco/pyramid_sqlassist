@@ -30,7 +30,8 @@ class EngineWrapper( object ):
     """wraps the SA engine object with mindless kruft"""
 
     def __init__( self, engine_name , sa_engine=None , sa_sessionmaker=None , sa_scoped_session=None ):
-        log.debug("sqlassist#EngineWrapper.init()" )
+        if __debug__ :
+            log.debug("sqlassist#EngineWrapper.init()" )
         self.engine_name= engine_name
         self.sa_engine= sa_engine
         self.sa_sessionmaker= sa_sessionmaker
@@ -47,7 +48,8 @@ class EngineWrapper( object ):
 
 def get_engine(name='!default'):
     """retrieves an engine from the registry"""
-    log.debug("sqlassist#get_engine()" )
+    if __debug__ :
+        log.debug("sqlassist#get_engine()" )
     try:
         if name == '!default':
             name = __engine_registry['!default']
@@ -61,8 +63,9 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
     """
     Creates new engines in the meta object and init the tables for each package
     """
-    log.debug("sqlassist#init_engine()" )
-    log.info("Initializing Engine : %s" % (engine_name) )
+    if __debug__ :
+        log.debug("sqlassist#init_engine()" )
+        log.info("Initializing Engine : %s" % (engine_name) )
 
     # configure the engine around a wrapper
     wrapped = EngineWrapper( engine_name , sa_engine=sa_engine )
@@ -100,7 +103,8 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
 
 def dbSession( engine_name ):
     """dbSession(engine_name): wraps get_engine and returns the sa_scoped_session"""
-    log.debug("sqlassist#dbSession(%s)" % engine_name )
+    if __debug__ :
+        log.debug("sqlassist#dbSession(%s)" % engine_name )
     session= get_engine(engine_name).sa_scoped_session
     return session
 
@@ -110,10 +114,12 @@ def dbSessionCleanup():
         removes all our sessions from the stash.
         this was a cleanup activity once-upon-a-time
     """
-    log.debug("sqlassist#dbSessionCleanup()" )
+    if __debug__ :
+        log.debug("sqlassist#dbSessionCleanup()" )
     for engine_name in __engine_registry['engines'].keys():
         _engine= get_engine(engine_name)
-        log.debug( "sqlassist#dbSessionCleanup(%s)" % engine_name )
+        if __debug__ :
+            log.debug( "sqlassist#dbSessionCleanup(%s)" % engine_name )
         _engine.sa_scoped_session.close()
 
 
@@ -240,7 +246,8 @@ def reflect_tables( app_model , primary=False , metadata=None , sa_engine=None ,
             reflect_tables( 'myapp.models' , primary=True )
 
     """
-    log.debug("sqlassist#reflect_tables(%s)" % app_model )
+    if __debug__ :
+        log.debug("sqlassist#reflect_tables(%s)" , app_model )
     to_reflect = []
     for content in dir( app_model ):
         module = getattr( app_model , content )
@@ -393,17 +400,16 @@ import re
 re_excludes= re.compile("/(img|_debug|js|css)")
 
 def sqlassist_tween_factory(handler, registry):
-
     def sqlassist_tween(request):
         if re.match( re_excludes , request.path_info ):
             return handler(request)
         try:
-            log.debug("sqlassist_tween_factory - dbSessionCleanup()")
-            print "sqlassist_tween_factory - dbSessionCleanup()"
+            response = handler(request)
+            return response
+        finally :
+            if __debug__ :
+                log.debug("sqlassist_tween_factory - dbSessionCleanup()")
             dbSessionCleanup()
-            return handler(request)
-        except :
-            raise
     return sqlassist_tween
 
 

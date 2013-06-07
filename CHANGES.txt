@@ -1,3 +1,7 @@
+0.0.9
+	pushed logging into __debug__ conditionals
+	cleaned up tween
+
 0.0.8
 	added DbSessionsContainer , which allows you to store and manage a sqlassist interface
 
