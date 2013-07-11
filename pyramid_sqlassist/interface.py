@@ -35,22 +35,31 @@ DeclaredTable= declarative_base()
 class EngineWrapper( object ):
     """wraps the SA engine object with mindless kruft"""
 
-    def __init__( self, engine_name , sa_engine=None , sa_sessionmaker=None , sa_scoped_session=None ):
+    engine_name = None
+    sa_engine = None
+    sa_scoped_session = None
+    
+    def __init__( self, engine_name , sa_engine=None ):
         if __debug__ :
             log.debug("sqlassist#EngineWrapper.__init__()" )
         self.engine_name= engine_name
         self.sa_engine= sa_engine
-        self.sa_sessionmaker= sa_sessionmaker
-        self.sa_sessionmaker_params= None
-        self.sa_scoped_session= sa_scoped_session
 
     def init_session( self , sa_sessionmaker_params ):
         if __debug__ :
             log.debug("sqlassist#EngineWrapper.init_session()" )
-        if sa_sessionmaker_params:
-            self.sa_sessionmaker_params= sa_sessionmaker_params
-        self.sa_sessionmaker= sqlalchemy_orm.sessionmaker( **self.sa_sessionmaker_params )
-        self.sa_scoped_session= sqlalchemy_orm.scoped_session( self.sa_sessionmaker )
+        sa_sessionmaker = sqlalchemy_orm.sessionmaker( **sa_sessionmaker_params )
+        self.sa_scoped_session= sqlalchemy_orm.scoped_session( sa_sessionmaker )
+        
+    def request_start( self ):
+        if __debug__ :
+            log.debug("sqlassist#EngineWrapper.request_start()" )
+        self.sa_scoped_session()
+        
+    def request_end(self):
+        if __debug__ :
+            log.debug("sqlassist#EngineWrapper.request_end() | %s" , self.engine_name )
+        self.sa_scoped_session.remove()
         
 
 
@@ -63,7 +72,7 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
         log.info("Initializing Engine : %s" % (engine_name) )
 
     # configure the engine around a wrapper
-    wrapped = EngineWrapper( engine_name , sa_engine=sa_engine )
+    wrapped_engine = EngineWrapper( engine_name , sa_engine=sa_engine )
 
     # these are some defaults that i once used for writers
     # loggers would autocommit as true
@@ -82,13 +91,12 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
             raise ValueError('I raise an error when you call init_engine() with `use_zope=True` and an `extension` in sa_sessionmaker_params. Sorry.')
         sa_sessionmaker_params['extension']= ZopeTransactionExtension()
 
-    wrapped.init_session(sa_sessionmaker_params)
+    wrapped_engine.init_session(sa_sessionmaker_params)
 
     # stash the wrapper
-    __engine_registry['engines'][engine_name]= wrapped
+    __engine_registry['engines'][engine_name]= wrapped_engine
     if default:
-        __engine_registry['default']= engine_name
-
+        __engine_registry[default]= engine_name
 
     # finally, reflect if needed
     if reflect:
@@ -98,8 +106,6 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
 
 def get_engine(name='!default'):
     """retrieves an engine from the registry"""
-    if __debug__ :
-        log.debug("sqlassist#get_engine()" )
     try:
         if name == '!default':
             name = __engine_registry['!default']
@@ -108,18 +114,39 @@ def get_engine(name='!default'):
         raise RuntimeError("No engine '%s' was configured" % name)
 
 
+ 
+
+def _ensure_cleanup(request):
+    """ensures we have a cleanup action"""
+    if dbSessionCleanup not in request.finished_callbacks :
+        request.add_finished_callback(dbSessionCleanup)
+
 
 
 def dbSession( engine_name ):
     """dbSession(engine_name): wraps get_engine and returns the sa_scoped_session"""
-    if __debug__ :
-        log.debug("sqlassist#dbSession(%s)" % engine_name )
     session= get_engine(engine_name).sa_scoped_session
     return session
 
 
 
-def dbSessionCleanup():
+def dbSessionSetup(request):
+    """The registry is *optionally*
+    called upon explicitly to create
+    a Session local to the thread and/or request
+    """
+    if __debug__ :
+        log.debug("sqlassist#dbSessionSetup()" )
+    if hasattr( request , 'pyramid_sqlassist-dbSessionSetup' ):
+        return
+    for engine_name in __engine_registry['engines'].keys():
+        _engine= get_engine(engine_name)
+        _engine.request_start()
+    _ensure_cleanup(request)
+
+
+
+def dbSessionCleanup(request):
     """
         removes all our sessions from the stash.
         this was a cleanup activity once-upon-a-time
@@ -128,18 +155,8 @@ def dbSessionCleanup():
         log.debug("sqlassist#dbSessionCleanup()" )
     for engine_name in __engine_registry['engines'].keys():
         _engine= get_engine(engine_name)
-        if __debug__ :
-            log.debug( "sqlassist#dbSessionCleanup(%s)" % engine_name )
-        _engine.sa_scoped_session.close()
-
-
-
-def cleanup_callback(request):
-    """request.add_finished_callback(sqlassist.cleanup_callback)"""
-    dbSessionCleanup()
-
-
-
+        _engine.request_end()
+       
 
 
 
@@ -176,7 +193,10 @@ class DbSessionsContainer(object):
 
 
     def __init__(self,request):
-        request.add_finished_callback(cleanup_callback)
+        ## 
+        dbSessionSetup(request)
+        ## make sure we cleanup everything!
+        _ensure_cleanup(request)
 
 
     @property

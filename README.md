@@ -5,9 +5,52 @@ SqlAssist offers **experimental** support for SqlAlchemy under Pyramid.
 
 Experimental means that it does things you shouldn't necessarily do, and it's a work in progress to automate certain functionalities.
 
-There is no testing, no guarantee, no nothing.  The API may change wildly.  This is largely an exercise in getting things done.
+There is no unit testing, no guarantee, no nothing.  The API may change wildly.  This is largely an exercise in getting things done.
 
 Help / Direction is always appreciated
+
+
+# Current Status
+
+* a Pyramid tween is provided to ensure "pyramid_sqlassist.dbSessionSetup"
+
+## `interface.dbSessionSetup`
+
+* Only runs once per request.
+* Proxies `EngineWrapper.request_start()` which explicitly calls `Session()` for each scoped session ( as recommended by Mike Bayer )
+* Can be ensured through `tweens.sqlassist_tween_factory`, or usage of `interface.DbSessionsContainer`
+* Ensures a `finished_callback` of `interface.dbSessionCleanup`
+
+## `interface.dbSessionCleanup`
+
+* Proxies `EngineWrapper.request_end()` which explicitly calls `session.remove()` for each scoped session ( as recommended by Mike Bayer )
+
+## `interface.DbSessionsContainer`
+
+* Quick container to proxy access to sessions
+* usage ensures proper setup and teardown of scoped sessions
+* not necessary if `tweens.sqlassist_tween_factory` is used
+
+## `tweens.sqlassist_tween_factory`
+
+* usage ensures proper setup and teardown of scoped sessions
+* not necessary if `interface.DbSessionsContainer` is used
+* setting 'pyramid_sqlassist.regex_path_excludes' in your .ini file will allow you to not setup the database on certain paths
+
+## `objects.UtilityObject`
+
+* core object with utility methods for quick prototyping of applications
+
+## `tools`
+
+* this is all testing and bad code
+
+
+
+
+
+
+# Goals
 
 The challenge is to provide for both:
 
@@ -15,10 +58,13 @@ The challenge is to provide for both:
 	2. Supporting multiple database connections ( read, write, log, etc ) for replicated cluster setups
     3. Support for Declared Tables happened in v0.3
 	4. Optimized Connection Handling
-	5. Having an alternative to Pyramid's automatic transaction handling ( sometimes you want multiple transactions in a request, or to handle these things yourself )
+	5. Having an alternative to Pyramid's automatic transaction handling ( sometimes you want multiple transactions in a request, or to handle these things yourself ; the transaction handling is still provided)
 
-Sections of this code are taken from or instpired by:
+Sections of this code are taken from or inspired by:
 
+	* SqlAlchemy docs
+	** Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
+	** Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
 	* Mike Orr's package 'sqlahelper'
 	* Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
 	* pyramid's @reify and set_request_property attributes
@@ -26,7 +72,8 @@ Sections of this code are taken from or instpired by:
 
 
 
-# Usage
+
+# Other Usage [ possibly out of date ]
 
 in your env.ini you specify multiple sqlalchemy urls, which might be to different dbs , or the same db but with different permissions
 
