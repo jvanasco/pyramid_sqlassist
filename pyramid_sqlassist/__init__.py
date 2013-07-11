@@ -31,7 +31,7 @@ class EngineWrapper( object ):
 
     def __init__( self, engine_name , sa_engine=None , sa_sessionmaker=None , sa_scoped_session=None ):
         if __debug__ :
-            log.debug("sqlassist#EngineWrapper.init()" )
+            log.debug("sqlassist#EngineWrapper.__init__()" )
         self.engine_name= engine_name
         self.sa_engine= sa_engine
         self.sa_sessionmaker= sa_sessionmaker
@@ -39,6 +39,8 @@ class EngineWrapper( object ):
         self.sa_scoped_session= sa_scoped_session
 
     def init_session( self , sa_sessionmaker_params ):
+        if __debug__ :
+            log.debug("sqlassist#EngineWrapper.init_session()" )
         if sa_sessionmaker_params:
             self.sa_sessionmaker_params= sa_sessionmaker_params
         self.sa_sessionmaker= sqlalchemy_orm.sessionmaker( **self.sa_sessionmaker_params )

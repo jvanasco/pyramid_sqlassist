@@ -12,8 +12,8 @@ README = README.split("\n\n", 1)[0] + "\n"
 requires = []
 
 setup(name="pyramid_sqlassist",
-      version="0.0.9",
-      description="Experimental SqlAlchemy support for pyramid",
+      version="0.1.0",
+      description="Experimental SqlAlchemy support for Pyramid",
       long_description=README,
       classifiers=[
         "Intended Audience :: Developers",
@@ -21,7 +21,7 @@ setup(name="pyramid_sqlassist",
         "Programming Language :: Python",
         "License :: OSI Approved :: MIT License",
         ],
-      keywords="web pylons",
+      keywords="web pyramid sqlalchemy",
       py_modules=['pyramid_sqlassist'],
       author="Jonathan Vanasco",
       author_email="jonathan@findmeon.com",
