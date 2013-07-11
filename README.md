@@ -12,8 +12,6 @@ Help / Direction is always appreciated
 
 # Current Status
 
-* a Pyramid tween is provided to ensure "pyramid_sqlassist.dbSessionSetup"
-
 ## `interface.dbSessionSetup`
 
 * Only runs once per request.
@@ -54,21 +52,21 @@ Help / Direction is always appreciated
 
 The challenge is to provide for both:
 
-	1. Reflecting Tables ( ie, not authoring a bunch of python class information for dozens of existing database tables )
-	2. Supporting multiple database connections ( read, write, log, etc ) for replicated cluster setups
-    3. Support for Declared Tables happened in v0.3
-	4. Optimized Connection Handling
-	5. Having an alternative to Pyramid's automatic transaction handling ( sometimes you want multiple transactions in a request, or to handle these things yourself ; the transaction handling is still provided)
+1. Reflecting Tables ( ie, not authoring a bunch of python class information for dozens of existing database tables )
+2. Supporting multiple database connections ( read, write, log, etc ) for replicated cluster setups
+3. Support for Declared Tables happened in v0.3
+4. Optimized Connection Handling
+5. Having an alternative to Pyramid's automatic transaction handling ( sometimes you want multiple transactions in a request, or to handle these things yourself ; the transaction handling is still provided)
 
 Sections of this code are taken from or inspired by:
 
-	* SqlAlchemy docs
-	** Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
-	** Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
-	* Mike Orr's package 'sqlahelper'
-	* Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
-	* pyramid's @reify and set_request_property attributes
-	* this was originally based on findmeon's pylons based opensocialnetwork library
+* SqlAlchemy docs
+** Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
+** Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
+* Mike Orr's package 'sqlahelper'
+* Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
+* pyramid's @reify and set_request_property attributes
+* this was originally based on findmeon's pylons based opensocialnetwork library
 
 
 
@@ -90,10 +88,14 @@ in your env.ini you specify multiple sqlalchemy urls, which might be to differen
 
 	import sqlassist
 	def initialize_database(settings):
-		engine_reader = sqlalchemy.engine_from_config(settings, prefix="sqlalchemy_reader.")
-		sqlassist.init_engine('reader',engine_reader,default=True,reflect=myapp.models, use_zope=False)
-		engine_writer = sqlalchemy.engine_from_config(settings, prefix="sqlalchemy_writer.")
-		sqlassist.init_engine('writer',engine_writer,default=False,reflect=myapp.models, use_zope=True)
+		engine_reader = sqlalchemy.engine_from_config(settings,
+			prefix="sqlalchemy_reader.")
+		sqlassist.init_engine('reader',engine_reader,default=True,
+			reflect=myapp.models, use_zope=False)
+		engine_writer = sqlalchemy.engine_from_config(settings,
+			prefix="sqlalchemy_writer.")
+		sqlassist.init_engine('writer',engine_writer,default=False,
+			reflect=myapp.models, use_zope=True)
 
 	from actual_models import *
 
@@ -150,9 +152,9 @@ in your handlers, you have this ( sqlalchemy is only imported to grab an excepti
 
 allows you to store and manage a sqlassist interface
 
-	* on __init__ , it attaches a sqlassist.cleanup_callback to the request
-	* it creates, inits, and stores a `reader` , `writer` and `logger` Lazy-loaded/memoized database connections
-	* it provides 'get_' methods for reader and writer, so they can be provided to functions that do lazy setups downstream
+* on __init__ , it attaches a sqlassist.cleanup_callback to the request
+* it creates, inits, and stores a `reader` , `writer` and `logger` Lazy-loaded/memoized database connections
+* it provides 'get_' methods for reader and writer, so they can be provided to functions that do lazy setups downstream
 
 recommended usage is configuring a class-based pyramid view with the following attribute
 
@@ -180,7 +182,8 @@ If you inherit from this class, your SqlAlchemy objects have some convenience me
     get__by__column__lower( self, dbSession, column , search , allow_many=False ):
     get__by__column__similar( self, dbSession , column , seed , prefix_only=True):
     get__by__column__exact_then_ilike( self, dbSession, column, seed ):
-    get__range( self, dbSession , start=0, limit=None , sort_direction='asc' , order_col=None , order_case_sensitive=True , filters=[] , debug_query=False):
+    get__range( self, dbSession , start=0, limit=None , sort_direction='asc' ,
+    	order_col=None , order_case_sensitive=True , filters=[] , debug_query=False):
     columns_as_dict(self)
 
 
@@ -195,9 +198,9 @@ If you inherit from this class, your SqlAlchemy objects have some convenience me
 
 This convenience class ONLY deals with 3 connections right now :
 
-	* reader
-	* writer
-	* logger
+* reader
+* writer
+* logger
 
 If you have more/different names - subclass , or create a patch to deal with dynamic names.  I didn't have time for that.
 
@@ -218,11 +221,11 @@ This behavior is not driven by the actual SqlAlchemy configuration-  though yes,
 
 if you're using zope & transaction modules :
 
-	* you need to call "transaction.commit"
+* you need to call "transaction.commit"
 
 if you're not using zope & transaction modules :
 
-	* you need to call "dbession_writer.commit()"
+* you need to call "dbession_writer.commit()"
 
 ## Rollbacks
 
