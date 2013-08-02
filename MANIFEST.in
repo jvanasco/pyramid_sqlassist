@@ -1,0 +1,1 @@
+include tests.py CHANGES.txt README.md

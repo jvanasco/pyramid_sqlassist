@@ -12,7 +12,7 @@ README = README.split("\n\n", 1)[0] + "\n"
 requires = []
 
 setup(name="pyramid_sqlassist",
-      version="0.1.0",
+      version="0.1.1",
       description="Experimental SqlAlchemy support for Pyramid",
       long_description=README,
       classifiers=[
