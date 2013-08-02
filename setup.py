@@ -9,10 +9,10 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, "README.md")).read()
 README = README.split("\n\n", 1)[0] + "\n"
 
-requires = ['sqlalchmey']
+requires = ['SQLAlchemy>=0.8.0']
 
 setup(name="pyramid_sqlassist",
-      version="0.1.1",
+      version="0.1.3",
       description="Experimental SqlAlchemy support for Pyramid",
       long_description=README,
       classifiers=[
