@@ -9,7 +9,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, "README.md")).read()
 README = README.split("\n\n", 1)[0] + "\n"
 
-requires = []
+requires = ['sqlalchmey']
 
 setup(name="pyramid_sqlassist",
       version="0.1.1",
@@ -22,15 +22,12 @@ setup(name="pyramid_sqlassist",
         "License :: OSI Approved :: MIT License",
         ],
       keywords="web pyramid sqlalchemy",
-      py_modules=['pyramid_sqlassist'],
+      packages=['pyramid_sqlassist'],
       author="Jonathan Vanasco",
       author_email="jonathan@findmeon.com",
       url="https://github.com/jvanasco/pyramid_sqlassist",
       license="MIT",
-      packages=find_packages(),
-      include_package_data=True,
       zip_safe=False,
-      tests_require = requires,
       install_requires = requires,
       test_suite="tests",
       )
