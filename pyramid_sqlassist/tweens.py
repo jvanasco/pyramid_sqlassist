@@ -32,12 +32,16 @@ def sqlassist_tween_factory(handler, registry):
         if ( regex_path_excludes is not None ) and re.match( regex_path_excludes , request.path_info ):
             return handler(request)
         try:
+            if __debug__ :
+                log.debug("sqlassist_tween_factory - BEGIN")
+                log.debug("sqlassist_tween_factory - BEGIN | request = %s" , id(request) )
             interface.dbSessionSetup(request)
             response = handler(request)
             return response
         finally :
             if __debug__ :
-                log.debug("sqlassist_tween_factory - dbSessionCleanup()")
+                log.debug("sqlassist_tween_factory - END")
+                log.debug("sqlassist_tween_factory - END | request = %s" , id(request) )
     return sqlassist_tween
 
 

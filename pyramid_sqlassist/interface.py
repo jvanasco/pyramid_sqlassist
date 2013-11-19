@@ -32,6 +32,17 @@ __engine_registry= { '!default':None , 'engines':{} }
 DeclaredTable= declarative_base()
 
 
+class STATUS_CODES:
+    STARTED = 1
+    ENDED = 2
+    
+
+class PyramidSqlassistStatus(object):
+    engines = None
+    def __init__(self):
+        self.engines = {}
+
+
 class EngineWrapper( object ):
     """wraps the SA engine object with mindless kruft"""
 
@@ -42,25 +53,50 @@ class EngineWrapper( object ):
     def __init__( self, engine_name , sa_engine=None ):
         if __debug__ :
             log.debug("sqlassist#EngineWrapper.__init__()" )
-        self.engine_name= engine_name
-        self.sa_engine= sa_engine
+        self.engine_name = engine_name
+        self.sa_engine = sa_engine
+        self.request = None
+
 
     def init_session( self , sa_sessionmaker_params ):
         if __debug__ :
             log.debug("sqlassist#EngineWrapper.init_session()" )
         sa_sessionmaker = sqlalchemy_orm.sessionmaker( **sa_sessionmaker_params )
         self.sa_scoped_session= sqlalchemy_orm.scoped_session( sa_sessionmaker )
-        
-    def request_start( self ):
+
+
+
+    def request_start( self , request , force=False ):
         if __debug__ :
-            log.debug("sqlassist#EngineWrapper.request_start()" )
-        self.sa_scoped_session()
+            log.debug("sqlassist#EngineWrapper.request_start() | request = %s" , id(request) )
+            log.debug("sqlassist#EngineWrapper.request_start() | %s | %s" , self.engine_name , str(self.sa_scoped_session) )
+            
+        if not hasattr( request , '_pyramid_sqlassist_status' ):
+            request._pyramid_sqlassist_status = PyramidSqlassistStatus()
+            
+        if self.engine_name not in request._pyramid_sqlassist_status.engines :
+            self.sa_scoped_session()
+
+            request._pyramid_sqlassist_status.engines[self.engine_name] = STATUS_CODES.STARTED
+        else :
+            log.debug("sqlassist#EngineWrapper.request_start() | %s | %s || DUPLICATE" , self.engine_name , str(self.sa_scoped_session) )
+
         
-    def request_end(self):
+    def request_end(self,request):
         if __debug__ :
-            log.debug("sqlassist#EngineWrapper.request_end() | %s" , self.engine_name )
+            log.debug("sqlassist#EngineWrapper.request_end() | request = %s" , id(request) )
+            log.debug("sqlassist#EngineWrapper.request_end() | %s | %s" , self.engine_name , str(self.sa_scoped_session) )
+
+        if not hasattr( request , '_pyramid_sqlassist_status' ):
+            request._pyramid_sqlassist_status = PyramidSqlassistStatus()
+
+        # remove no matter what            
         self.sa_scoped_session.remove()
-        
+
+        if self.engine_name in request._pyramid_sqlassist_status.engines :
+            request._pyramid_sqlassist_status.engines[self.engine_name] = STATUS_CODES.ENDED
+
+
 
 
 def init_engine( engine_name , sa_engine , default=False , reflect=False , use_zope=False , sa_sessionmaker_params=None ):
@@ -125,7 +161,7 @@ def _ensure_cleanup(request):
 
 def dbSession( engine_name ):
     """dbSession(engine_name): wraps get_engine and returns the sa_scoped_session"""
-    session= get_engine(engine_name).sa_scoped_session
+    session = get_engine(engine_name).sa_scoped_session
     return session
 
 
@@ -139,9 +175,11 @@ def dbSessionSetup(request):
         log.debug("sqlassist#dbSessionSetup()" )
     if hasattr( request , 'pyramid_sqlassist-dbSessionSetup' ):
         return
+    if not hasattr( request , '_pyramid_sqlassist_status' ):
+        request._pyramid_sqlassist_status = PyramidSqlassistStatus()
     for engine_name in __engine_registry['engines'].keys():
         _engine= get_engine(engine_name)
-        _engine.request_start()
+        _engine.request_start(request)
     _ensure_cleanup(request)
 
 
@@ -155,7 +193,7 @@ def dbSessionCleanup(request):
         log.debug("sqlassist#dbSessionCleanup()" )
     for engine_name in __engine_registry['engines'].keys():
         _engine= get_engine(engine_name)
-        _engine.request_end()
+        _engine.request_end(request)
        
 
 

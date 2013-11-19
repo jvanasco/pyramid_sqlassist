@@ -1,3 +1,8 @@
+0.1.4
+	* adding some logic onto dbSessionSetup to only set requests up once.  this is pretty poorly done, but is backwards compatible.  this needs to be recoded.
+	* now logging info about the request ( name + id )
+	* passing `request` into various setups
+
 0.0.9
 	pushed logging into __debug__ conditionals
 	cleaned up tween
