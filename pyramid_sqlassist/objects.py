@@ -15,25 +15,25 @@ class CoreObject(object):
 
 class UtilityObject(CoreObject):
 
-    def get__by__id( self, dbSession, id , id_column='id' ):
+    def get__by__id( self, dbSession, id, id_column='id' ):
         """gets an item by an id column named 'id'.  id column can be overriden"""
-        if not hasattr( self.__class__ , id_column ) and hasattr( self, '__table_pkey__' ) :
-            id_column= self.__table_pkey__
-        id_col= getattr( self.__class__ , id_column )
-        if isinstance( id , (types.ListType,types.TupleType) ):
+        if not hasattr( self.__class__, id_column ) and hasattr( self, '__table_pkey__' ) :
+            id_column = self.__table_pkey__
+        id_col = getattr( self.__class__, id_column )
+        if isinstance( id, (types.ListType, types.TupleType) ):
             return dbSession.query(self.__class__).filter( id_col.in_(id) ).all()
         else :
-            id_dict= { id_column : id }
+            id_dict = { id_column : id }
             return dbSession.query(self.__class__).filter_by( **id_dict ).first()
 
 
-    def get__by__column__lower( self, dbSession, column , search , allow_many=False ):
+    def get__by__column__lower( self, dbSession, column, search, allow_many=False ):
         """gets items from the database based on a lowercase version of the column. 
         useful for situations where you have a function index on a table
         (such as indexing on the lower version of an email addresses)"""
-        items= dbSession.query(self.__class__)\
+        items = dbSession.query(self.__class__)\
             .filter(\
-                sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ) == search.lower() 
+                sqlalchemy.sql.func.lower( getattr( self.__class__, column ) ) == search.lower() 
             )\
             .all()
         if items:
@@ -47,57 +47,58 @@ class UtilityObject(CoreObject):
         return None
 
 
-    def get__by__column__similar( self, dbSession , column , seed , prefix_only=True):
+    def get__by__column__similar( self, dbSession, column, seed, prefix_only=True):
         """seaches for a name column entry with the submitted seed prefix"""
         query = dbSession.query(self.__class__)
         if prefix_only :
             query = query.filter(\
-                sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ).startswith( seed.lower() )
+                sqlalchemy.sql.func.lower( getattr( self.__class__, column ) ).startswith( seed.lower() )
             )
         else :
             query = query.filter(\
-                sqlalchemy.sql.func.lower( getattr( self.__class__ , column ) ).contains( seed.lower() )
+                sqlalchemy.sql.func.lower( getattr( self.__class__, column ) ).contains( seed.lower() )
             )
         results = query\
-            .order_by( getattr( self.__class__ , column ).asc() )\
+            .order_by( getattr( self.__class__, column ).asc() )\
             .all()
         return results
             
             
     def get__by__column__exact_then_ilike( self, dbSession, column, seed ):
         """ seaches for an exact, then case-insensitive version of the name column"""
-        item= dbSession.query(self.__class__).filter( getattr( self.__class__ , column ) == seed ).first()
+        item = dbSession.query(self.__class__).filter( getattr( self.__class__, column ) == seed ).first()
         if not item:
-            item= dbSession.query(self.__class__).filter( getattr( self.__class__ , column ).ilike(seed) ).first()
+            item = dbSession.query(self.__class__).filter( getattr( self.__class__, column ).ilike(seed) ).first()
         return item
 
 
-    def get__range( self, dbSession , start=0, limit=None , sort_direction='asc' , order_col=None , order_case_sensitive=True , filters=[] , debug_query=False):
+    def get__range( self, dbSession, start=0, limit=None, sort_direction='asc', order_col=None, order_case_sensitive=True, filters=[], debug_query=False):
         """gets a range of items"""
         if not order_col:
-            order_col= 'id'
-        query= dbSession.query(self.__class__)
+            order_col = 'id'
+        query = dbSession.query(self.__class__)
         for filter in filters:
-            query= query.filter( filter )
+            query = query.filter( filter )
         for col in order_col.split(','):
             # declared columns do not have self.__class__.c
             # reflected columns did in earlier sqlalchemy
-            col= getattr( self.__class__, col )
+            col = getattr( self.__class__, col )
             if sort_direction == 'asc':
                 if order_case_sensitive:
-                    query= query.order_by( col.asc() )
+                    query = query.order_by( col.asc() )
                 else:
-                    query= query.order_by( sqlalchemy.sql.func.lower( col ).asc() )
+                    query = query.order_by( sqlalchemy.sql.func.lower( col ).asc() )
             elif sort_direction == 'desc':
                 if order_case_sensitive:
-                    query= query.order_by( col.desc() )
+                    query = query.order_by( col.desc() )
                 else:
-                    query= query.order_by( sqlalchemy.sql.func.lower( col ).desc() )
+                    query = query.order_by( sqlalchemy.sql.func.lower( col ).desc() )
             else:
                 raise ValueError('invalid sort direction')
-        query= query.offset(start).limit(limit)
-        results= query.all()
-        if debug_query:
+        query = query.offset(start).limit(limit)
+        results = query.all()
+        if __debug__ and debug_query :
+            log.debug("get__range")
             log.debug(query)
             log.debug(results)
         return results

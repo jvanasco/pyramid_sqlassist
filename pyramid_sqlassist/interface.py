@@ -13,8 +13,8 @@ try:
    import transaction
    from zope.sqlalchemy import ZopeTransactionExtension
 except ImportError:
-   ZopeTransactionExtension= None
-   transaction= None
+   ZopeTransactionExtension = None
+   transaction = None
 
 
 ## local imports
@@ -23,13 +23,13 @@ from . import tools
 
 
 ## store the metadata in the package
-__metadata= sqlalchemy.MetaData()
+__metadata = sqlalchemy.MetaData()
 
 # define an engine registry
-__engine_registry= { '!default':None , 'engines':{} }
+__engine_registry = { '!default':None, 'engines':{} }
 
 # this is used for inheritance only
-DeclaredTable= declarative_base()
+DeclaredTable = declarative_base()
 
 
 class STATUS_CODES:
@@ -50,7 +50,7 @@ class EngineWrapper( object ):
     sa_engine = None
     sa_scoped_session = None
     
-    def __init__( self, engine_name , sa_engine=None ):
+    def __init__( self, engine_name, sa_engine=None ):
         if __debug__ :
             log.debug("sqlassist#EngineWrapper.__init__()" )
         self.engine_name = engine_name
@@ -58,20 +58,20 @@ class EngineWrapper( object ):
         self.request = None
 
 
-    def init_session( self , sa_sessionmaker_params ):
+    def init_session( self, sa_sessionmaker_params ):
         if __debug__ :
             log.debug("sqlassist#EngineWrapper.init_session()" )
         sa_sessionmaker = sqlalchemy_orm.sessionmaker( **sa_sessionmaker_params )
-        self.sa_scoped_session= sqlalchemy_orm.scoped_session( sa_sessionmaker )
+        self.sa_scoped_session = sqlalchemy_orm.scoped_session( sa_sessionmaker )
 
 
 
-    def request_start( self , request , force=False ):
+    def request_start( self, request, force=False ):
         if __debug__ :
-            log.debug("sqlassist#EngineWrapper.request_start() | request = %s" , id(request) )
-            log.debug("sqlassist#EngineWrapper.request_start() | %s | %s" , self.engine_name , str(self.sa_scoped_session) )
+            log.debug("sqlassist#EngineWrapper.request_start() | request = %s", id(request) )
+            log.debug("sqlassist#EngineWrapper.request_start() | %s | %s", self.engine_name, str(self.sa_scoped_session) )
             
-        if not hasattr( request , '_pyramid_sqlassist_status' ):
+        if not hasattr( request, '_pyramid_sqlassist_status' ):
             request._pyramid_sqlassist_status = PyramidSqlassistStatus()
             
         if self.engine_name not in request._pyramid_sqlassist_status.engines :
@@ -79,15 +79,16 @@ class EngineWrapper( object ):
 
             request._pyramid_sqlassist_status.engines[self.engine_name] = STATUS_CODES.STARTED
         else :
-            log.debug("sqlassist#EngineWrapper.request_start() | %s | %s || DUPLICATE" , self.engine_name , str(self.sa_scoped_session) )
+            if __debug__:
+                log.debug("sqlassist#EngineWrapper.request_start() | %s | %s || DUPLICATE", self.engine_name, str(self.sa_scoped_session) )
 
         
-    def request_end(self,request):
+    def request_end(self, request):
         if __debug__ :
-            log.debug("sqlassist#EngineWrapper.request_end() | request = %s" , id(request) )
-            log.debug("sqlassist#EngineWrapper.request_end() | %s | %s" , self.engine_name , str(self.sa_scoped_session) )
+            log.debug("sqlassist#EngineWrapper.request_end() | request = %s", id(request) )
+            log.debug("sqlassist#EngineWrapper.request_end() | %s | %s", self.engine_name, str(self.sa_scoped_session) )
 
-        if not hasattr( request , '_pyramid_sqlassist_status' ):
+        if not hasattr( request, '_pyramid_sqlassist_status' ):
             request._pyramid_sqlassist_status = PyramidSqlassistStatus()
 
         # remove no matter what            
@@ -99,7 +100,7 @@ class EngineWrapper( object ):
 
 
 
-def init_engine( engine_name , sa_engine , default=False , reflect=False , use_zope=False , sa_sessionmaker_params=None ):
+def init_engine( engine_name, sa_engine, default=False, reflect=False, use_zope=False, sa_sessionmaker_params=None ):
     """
     Creates new engines in the meta object and init the tables for each package
     """
@@ -108,35 +109,35 @@ def init_engine( engine_name , sa_engine , default=False , reflect=False , use_z
         log.info("Initializing Engine : %s" % (engine_name) )
 
     # configure the engine around a wrapper
-    wrapped_engine = EngineWrapper( engine_name , sa_engine=sa_engine )
+    wrapped_engine = EngineWrapper( engine_name, sa_engine=sa_engine )
 
     # these are some defaults that i once used for writers
     # loggers would autocommit as true
     # not sure this is needed with zope
     if sa_sessionmaker_params is None:
-        sa_sessionmaker_params= {}
-    _sa_sessionmaker_params= { 'autoflush':True, 'autocommit':False , 'bind':sa_engine }
+        sa_sessionmaker_params = {}
+    _sa_sessionmaker_params = { 'autoflush':True, 'autocommit':False, 'bind':sa_engine }
     for i in _sa_sessionmaker_params.keys():
         if i not in sa_sessionmaker_params:
-            sa_sessionmaker_params[i]= _sa_sessionmaker_params[i]
+            sa_sessionmaker_params[i] = _sa_sessionmaker_params[i]
 
     if use_zope:
         if ZopeTransactionExtension is None:
             raise ImportError('ZopeTransactionExtension was not imported earlier')
         if 'extension' in sa_sessionmaker_params:
             raise ValueError('I raise an error when you call init_engine() with `use_zope=True` and an `extension` in sa_sessionmaker_params. Sorry.')
-        sa_sessionmaker_params['extension']= ZopeTransactionExtension()
+        sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
 
     wrapped_engine.init_session(sa_sessionmaker_params)
 
     # stash the wrapper
-    __engine_registry['engines'][engine_name]= wrapped_engine
+    __engine_registry['engines'][engine_name] = wrapped_engine
     if default:
-        __engine_registry[default]= engine_name
+        __engine_registry[default] = engine_name
 
     # finally, reflect if needed
     if reflect:
-        tools.reflect_tables( reflect , primary=default , metadata=__metadata , engine_name=engine_name , sa_engine=sa_engine )
+        tools.reflect_tables( reflect, primary=default, metadata=__metadata, engine_name=engine_name, sa_engine=sa_engine )
 
 
 
@@ -173,12 +174,12 @@ def dbSessionSetup(request):
     """
     if __debug__ :
         log.debug("sqlassist#dbSessionSetup()" )
-    if hasattr( request , 'pyramid_sqlassist-dbSessionSetup' ):
+    if hasattr( request, 'pyramid_sqlassist-dbSessionSetup' ):
         return
-    if not hasattr( request , '_pyramid_sqlassist_status' ):
+    if not hasattr( request, '_pyramid_sqlassist_status' ):
         request._pyramid_sqlassist_status = PyramidSqlassistStatus()
     for engine_name in __engine_registry['engines'].keys():
-        _engine= get_engine(engine_name)
+        _engine = get_engine(engine_name)
         _engine.request_start(request)
     _ensure_cleanup(request)
 
@@ -192,7 +193,7 @@ def dbSessionCleanup(request):
     if __debug__ :
         log.debug("sqlassist#dbSessionCleanup()" )
     for engine_name in __engine_registry['engines'].keys():
-        _engine= get_engine(engine_name)
+        _engine = get_engine(engine_name)
         _engine.request_end(request)
        
 
@@ -202,7 +203,7 @@ class DbSessionsContainer(object):
     """
         DbSessionsContainer allows you to store and manage a sqlassist interface
         
-        -- on __init__ , it attaches a sqlassist.cleanup_callback to the request
+        -- on __init__, it attaches a sqlassist.cleanup_callback to the request
         -- it creates, inits, and stores a `reader` and `writer` database handle
         -- it provides 'get_' methods for reader and writer, so they can be provided to functions that do lazy setups downstream 
         
@@ -213,24 +214,24 @@ class DbSessionsContainer(object):
         and example usages:
             
             establish a connection on demand :
-                self.request.dbSession.reader.query( do stuff , yay )
+                self.request.dbSession.reader.query( do stuff, yay )
                 
             configure a CachingApi with a potential database reader 
                 cachingApi = CachingApi( database_reader_fetch = self.request.dbSession.get_reader )
                 
         rule of thumb:
 
-            when using db connection , utilize dbSession.reader
-            when setting up an object , utilize dbSession.get_reader and memoize the reader connection
+            when using db connection, utilize dbSession.reader
+            when setting up an object, utilize dbSession.get_reader and memoize the reader connection
 
     """
     _any = None
-    _logger= None
-    _reader= None
-    _writer= None
+    _logger = None
+    _reader = None
+    _writer = None
 
 
-    def __init__(self,request):
+    def __init__(self, request):
         ## 
         dbSessionSetup(request)
         ## make sure we cleanup everything!
@@ -244,7 +245,7 @@ class DbSessionsContainer(object):
         return self._any
 
     def get_any( self ):
-        for i in ( self.reader , self.writer ):
+        for i in ( self.reader, self.writer ):
             if i is not None:
                 return i
         raise ValueError('No dbSession to return')
@@ -284,11 +285,11 @@ class DbSessionsContainer(object):
 
 
 
-def initialize_sql(engine_name,population_callback=None,metadata=None):
+def initialize_sql(engine_name, population_callback=None, metadata=None):
     if metadata:
-        DeclaredTable.metadata= metadata
-    _dbSession= dbSession(engine_name)
-    _sa_engine= get_engine(engine_name).sa_engine
+        DeclaredTable.metadata = metadata
+    _dbSession = dbSession(engine_name)
+    _sa_engine = get_engine(engine_name).sa_engine
     _dbSession.configure( bind = _sa_engine  )
     DeclaredTable.metadata.bind = _sa_engine
     DeclaredTable.metadata.create_all(_sa_engine)

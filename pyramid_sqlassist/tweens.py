@@ -16,7 +16,7 @@ from pyramid.tweens import EXCVIEW
 
 def includeme(config):
     """set up tweens"""
-    global regex_path_excludes , regex_path_excludes_default
+    global regex_path_excludes, regex_path_excludes_default
 
     _regex_path_excludes = regex_path_excludes_default
     if 'pyramid_sqlassist.regex_path_excludes' in config.registry.settings :
@@ -29,19 +29,19 @@ def includeme(config):
 
 def sqlassist_tween_factory(handler, registry):
     def sqlassist_tween(request):
-        if ( regex_path_excludes is not None ) and re.match( regex_path_excludes , request.path_info ):
+        if ( regex_path_excludes is not None ) and re.match( regex_path_excludes, request.path_info ):
             return handler(request)
         try:
             if __debug__ :
                 log.debug("sqlassist_tween_factory - BEGIN")
-                log.debug("sqlassist_tween_factory - BEGIN | request = %s" , id(request) )
+                log.debug("sqlassist_tween_factory - BEGIN | request = %s", id(request) )
             interface.dbSessionSetup(request)
             response = handler(request)
             return response
         finally :
             if __debug__ :
                 log.debug("sqlassist_tween_factory - END")
-                log.debug("sqlassist_tween_factory - END | request = %s" , id(request) )
+                log.debug("sqlassist_tween_factory - END | request = %s", id(request) )
     return sqlassist_tween
 
 
