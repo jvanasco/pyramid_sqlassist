@@ -99,14 +99,25 @@ class EngineWrapper( object ):
 
 
 
+def reinit_engine( engine_name ):
+    """
+    calls `dispose` on all registered engines, instructing SqlAlchemy to drop the connection pool and begin a new one.
+    this is useful as a postfork hook in uwsgi or other frameworks, under which there can be issues with database connections due to forking.
+    """
+    if engine_name not in __engine_registry['engines'] :
+        return
+    wrapped_engine = __engine_registry['engines'][engine_name]
+    wrapped_engine.sa_engine.dispose()
+    
 
-def init_engine( engine_name, sa_engine, default=False, reflect=False, use_zope=False, sa_sessionmaker_params=None ):
+
+def init_engine( engine_name, sa_engine, default=False, reflect=False, use_zope=False, sa_sessionmaker_params=None, is_readonly=False ):
     """
     Creates new engines in the meta object and init the tables for each package
     """
     if __debug__ :
         log.debug("sqlassist#init_engine()" )
-        log.info("Initializing Engine : %s" % (engine_name) )
+        log.info("Initializing Engine : %s", engine_name )
 
     # configure the engine around a wrapper
     wrapped_engine = EngineWrapper( engine_name, sa_engine=sa_engine )
@@ -116,10 +127,10 @@ def init_engine( engine_name, sa_engine, default=False, reflect=False, use_zope=
     # not sure this is needed with zope
     if sa_sessionmaker_params is None:
         sa_sessionmaker_params = {}
-    _sa_sessionmaker_params = { 'autoflush':True, 'autocommit':False, 'bind':sa_engine }
-    for i in _sa_sessionmaker_params.keys():
+    _sa_sessionmaker_params__defaults = { 'autoflush':True, 'autocommit':False, 'bind':sa_engine }
+    for i in _sa_sessionmaker_params__defaults.keys():
         if i not in sa_sessionmaker_params:
-            sa_sessionmaker_params[i] = _sa_sessionmaker_params[i]
+            sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
 
     if use_zope:
         if ZopeTransactionExtension is None:
@@ -127,6 +138,10 @@ def init_engine( engine_name, sa_engine, default=False, reflect=False, use_zope=
         if 'extension' in sa_sessionmaker_params:
             raise ValueError('I raise an error when you call init_engine() with `use_zope=True` and an `extension` in sa_sessionmaker_params. Sorry.')
         sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
+
+    if is_readonly :
+        sa_sessionmaker_params['autocommit'] = True
+        sa_sessionmaker_params['expire_on_commit'] = False
 
     wrapped_engine.init_session(sa_sessionmaker_params)
 

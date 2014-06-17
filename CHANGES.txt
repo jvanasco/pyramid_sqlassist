@@ -1,6 +1,7 @@
 0.1.5
 	* fixing some issues with spacing
 	* wrapped a few `log` statemets in __debug__
+	* added reinit_engine to function as a postfork hook under uwsgi
 
 0.1.4
 	* adding some logic onto dbSessionSetup to only set requests up once.  this is pretty poorly done, but is backwards compatible.  this needs to be recoded.

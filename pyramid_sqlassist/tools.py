@@ -43,7 +43,7 @@ def reflect_tables( app_model, primary=False, metadata=None, sa_engine=None, eng
         table_name = _class.__tablename__
         if table_name:
             if __debug__ :
-                log.info("Reflecting : %s (table: %s)" % (_class, table_name) )
+                log.info("Reflecting : %s (table: %s)", _class, table_name )
 
             # turn off SQL Query logging in sqlAlchemey for a moment, it's just makes a mess of things
             _level = logging.getLogger('sqlalchemy.engine').getEffectiveLevel()
