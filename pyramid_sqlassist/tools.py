@@ -8,9 +8,15 @@ import types
 import sqlalchemy
 import sqlalchemy.orm as sqlalchemy_orm
 
+from .objects import ReflectedTable
+
 
 def reflect_tables(app_model, primary=False, metadata=None, sa_engine=None, engine_name=None):
     """this reflects tables via sqlalchemy.
+
+
+        THIS DOES NOT WORK YET
+
 
         recursively goes through the application's model package looking for classes that inherit from ReflectedTable
 
@@ -21,7 +27,6 @@ def reflect_tables(app_model, primary=False, metadata=None, sa_engine=None, engi
 
         Bad - this won't work at all:
             reflect_tables('myapp.models', primary=True)
-
     """
     if __debug__:
         log.debug("sqlassist#reflect_tables(%s)", app_model)
@@ -39,7 +44,7 @@ def reflect_tables(app_model, primary=False, metadata=None, sa_engine=None, engi
                 to_reflect.append(module_element)
 
     for _class in to_reflect:
-        raise ValueError('ReflectedTable inheritance does not work well right now.')
+        raise ValueError('ReflectedTable inheritance does not work well right now.  This is still being developed.')
         table_name = _class.__tablename__
         if table_name:
             if __debug__:

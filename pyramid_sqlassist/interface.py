@@ -290,5 +290,5 @@ def initialize_sql(engine_name, population_callback=None, metadata=None):
     try:
         if population_callback:
             population_callback()
-    except IntegrityError:
+    except sqlalchemy.exc.IntegrityError:
         transaction.abort()
