@@ -12,7 +12,7 @@ requires = ['SQLAlchemy>=0.8.0']
 
 setup(
     name="pyramid_sqlassist",
-    version="0.1.6",
+    version="0.1.7",
     description="Experimental SqlAlchemy support for Pyramid",
     long_description=README,
     classifiers=[

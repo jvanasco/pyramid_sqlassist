@@ -161,7 +161,7 @@ def get_engine(name='!default'):
 
 def _ensure_cleanup(request):
     """ensures we have a cleanup action"""
-    if dbSessionCleanup not in request.finished_callbacks:
+    if request.finished_callbacks and dbSessionCleanup not in request.finished_callbacks:
         request.add_finished_callback(dbSessionCleanup)
 
 
