@@ -21,11 +21,18 @@ except ImportError:
 from . import tools
 
 
+# ==============================================================================
+
+
 # store the metadata in the package
 __metadata = sqlalchemy.MetaData()
 
+
 # define an engine registry
-__engine_registry = {'!default': None, 'engines': {}, }
+__engine_registry = {'!default': None,
+                     'engines': {},
+                     }
+
 
 # this is used for inheritance only
 DeclaredTable = declarative_base()
@@ -34,6 +41,9 @@ DeclaredTable = declarative_base()
 class STATUS_CODES:
     STARTED = 1
     ENDED = 2
+
+
+# ------------------------------------------------------------------------------
 
 
 class PyramidSqlassistStatus(object):
@@ -105,7 +115,14 @@ def reinit_engine(engine_name):
     wrapped_engine.sa_engine.dispose()
 
 
-def init_engine(engine_name, sa_engine, default=False, reflect=False, use_zope=False, sa_sessionmaker_params=None, is_readonly=False):
+def init_engine(engine_name,
+                sa_engine,
+                default=False,
+                reflect=False,
+                use_zope=False,
+                sa_sessionmaker_params=None,
+                is_readonly=False
+                ):
     """
     Creates new engines in the meta object and init the tables for each package
     """
@@ -121,7 +138,10 @@ def init_engine(engine_name, sa_engine, default=False, reflect=False, use_zope=F
     # not sure this is needed with zope
     if sa_sessionmaker_params is None:
         sa_sessionmaker_params = {}
-    _sa_sessionmaker_params__defaults = {'autoflush': True, 'autocommit': False, 'bind': sa_engine, }
+    _sa_sessionmaker_params__defaults = {'autoflush': True,
+                                         'autocommit': False,
+                                         'bind': sa_engine,
+                                         }
     for i in _sa_sessionmaker_params__defaults.keys():
         if i not in sa_sessionmaker_params:
             sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
@@ -130,7 +150,9 @@ def init_engine(engine_name, sa_engine, default=False, reflect=False, use_zope=F
         if ZopeTransactionExtension is None:
             raise ImportError('ZopeTransactionExtension was not imported earlier')
         if 'extension' in sa_sessionmaker_params:
-            raise ValueError('I raise an error when you call init_engine() with `use_zope=True` and an `extension` in sa_sessionmaker_params. Sorry.')
+            raise ValueError('''I raise an error when you call init_engine() 
+            with `use_zope=True` and an `extension` in sa_sessionmaker_params. 
+            Sorry.''')
         sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
 
     if is_readonly:
@@ -146,7 +168,13 @@ def init_engine(engine_name, sa_engine, default=False, reflect=False, use_zope=F
 
     # finally, reflect if needed
     if reflect:
-        tools.reflect_tables(reflect, primary=default, metadata=__metadata, engine_name=engine_name, sa_engine=sa_engine)
+        # this takes .003 seconds at most
+        tools.reflect_tables(reflect,
+                             primary=default,
+                             metadata=__metadata,
+                             engine_name=engine_name,
+                             sa_engine=sa_engine,
+                             )
 
 
 def get_engine(name='!default'):
@@ -206,7 +234,8 @@ class DbSessionsContainer(object):
 
         -- on __init__, it attaches a sqlassist.cleanup_callback to the request
         -- it creates, inits, and stores a `reader` and `writer` database handle
-        -- it provides 'get_' methods for reader and writer, so they can be provided to functions that do lazy setups downstream
+        -- it provides 'get_' methods for reader and writer, so they can be 
+           provided to functions that do lazy setups downstream
 
         recommended usage is configuring a class-based pyramid view with the following attribute
 
