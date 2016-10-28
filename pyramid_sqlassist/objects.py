@@ -1,12 +1,12 @@
 import logging
 log = logging.getLogger(__name__)
 
-# standard lib imports
-import types
-
 
 import sqlalchemy
 import sqlalchemy.orm as sqlalchemy_orm
+
+
+# ==============================================================================
 
 
 class CoreObject(object):
@@ -20,7 +20,7 @@ class UtilityObject(CoreObject):
         if not hasattr(self.__class__, id_column) and hasattr(self, '__table_pkey__'):
             id_column = self.__table_pkey__
         id_col = getattr(self.__class__, id_column)
-        if isinstance(id, (types.ListType, types.TupleType)):
+        if isinstance(id, (list, tuple)):
             return dbSession.query(self.__class__).filter(id_col.in_(id)).all()
         else:
             id_dict = {id_column: id}

@@ -11,29 +11,30 @@ import sqlalchemy.orm as sqlalchemy_orm
 from .objects import ReflectedTable
 
 
-def reflect_tables(app_model, primary=False, metadata=None, sa_engine=None, engine_name=None):
-    """this reflects tables via sqlalchemy.
+# ==============================================================================
 
+
+def reflect_tables(model_package, is_primary=False, metadata=None, sa_engine=None, engine_name=None):
+    """this reflects tables via sqlalchemy.
 
         THIS DOES NOT WORK YET
 
-
         recursively goes through the application's model package looking for classes that inherit from ReflectedTable
 
-        app_model- the package you want to reflect.  pass in a package, not a string
+        `model_package` the package you want to reflect.  pass in a package, not a string
 
         Good:
-            reflect_tables(myapp.models, primary=True)
+            reflect_tables(myapp.models, is_primary=True)
 
         Bad - this won't work at all:
-            reflect_tables('myapp.models', primary=True)
+            reflect_tables('myapp.models', is_primary=True)
     """
     if __debug__:
-        log.debug("sqlassist#reflect_tables(%s)", app_model)
+        log.debug("reflect_tables(%s)", model_package)
 
     to_reflect = []
-    for content in dir(app_model):
-        module = getattr(app_model, content)
+    for content in dir(model_package):
+        module = getattr(model_package, content)
         if not isinstance(module, types.ModuleType):
             continue
         for module_element in dir(module):
@@ -63,10 +64,10 @@ def reflect_tables(app_model, primary=False, metadata=None, sa_engine=None, engi
             if _primarykey:
                 if isinstance(_primarykey, types.StringTypes):
                     primarykey.append(getattr(table, _primarykey))
-                elif isinstance(_primarykey, types.ListTypes):
+                elif isinstance(_primarykey, list):
                     for _column_name in _primarykey:
                         primarykey.append(getattr(table, _column_name))
-            if primary:
+            if is_primary:
                 sqlalchemy_orm.mapper(_class, table)
             else:
                 sqlalchemy_orm.mapper(_class, table, non_primary=True)

@@ -8,12 +8,14 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, "README.md")).read()
 README = README.split("\n\n", 1)[0] + "\n"
 
-requires = ['SQLAlchemy>=0.8.0']
+requires = ['SQLAlchemy>=0.9.0',
+            'pyramid',
+            ]
 
 setup(
     name="pyramid_sqlassist",
-    version="0.1.7",
-    description="Experimental SqlAlchemy support for Pyramid",
+    version="0.9.0",
+    description="Efficiently manage multiple SqlAlchemy connections for Pyramid",
     long_description=README,
     classifiers=[
         "Intended Audience :: Developers",
