@@ -1,3 +1,6 @@
+0.9.2
+	* added `is_configure_mappers` hook to engine intialization.
+
 0.9.1
 	* suppress loading ZOPE with a environment variable: SQLASSIST_DISABLE_TRANSACTION
 	* TESTING - adding support for non-scoped sessions

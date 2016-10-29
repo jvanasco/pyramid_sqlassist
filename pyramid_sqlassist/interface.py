@@ -199,6 +199,7 @@ def initialize_engine(engine_name,
                       is_scoped=True,
                       model_package=None,
                       reflect=False,
+                      is_configure_mappers=True,
                       ):
     """
     Creates new engines in the meta object and initializes the tables for each package
@@ -212,6 +213,7 @@ def initialize_engine(engine_name,
         `autocommit`=True
         `expire_on_commit`=False
     :is_scoped: bool. default `True`.  controls whether or not sessions are scoped_sessions
+    :is_configure_mappers: bool. default `True`.  will call `sqlalchemy.orm.configure_mappers`. useful as a startup hook.
 
     Not Working:
     :model_package: - pass in the model for inspection
@@ -258,6 +260,9 @@ def initialize_engine(engine_name,
     _engine_registry['engines'][engine_name] = wrapped_engine
     if is_default:
         _engine_registry['!default'] = engine_name
+
+    if is_configure_mappers:
+        sqlalchemy.orm.configure_mappers()
 
     # finally, reflect if needed
     if reflect:

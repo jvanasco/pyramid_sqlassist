@@ -14,7 +14,7 @@ requires = ['SQLAlchemy>=0.9.0',
 
 setup(
     name="pyramid_sqlassist",
-    version="0.9.1",
+    version="0.9.2",
     description="Efficiently manage multiple SqlAlchemy connections for Pyramid",
     long_description=README,
     classifiers=[
