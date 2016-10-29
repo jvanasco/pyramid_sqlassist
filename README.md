@@ -5,13 +5,21 @@ SqlAssist offers **experimental** support for multiple SqlAlchemy connections u
 
 Experimental means that it does things you shouldn't necessarily do, and it's a work in progress to automate certain functionalities.
 
-The 0.9.0 release is a partial rewrite of the 0.1.x version and is somewhat incompatible.
+The `v0.9.0` release is a partial rewrite of the `v0.1.x` version and is somewhat incompatible.
 
 Tweens were deprecated for explicit request methods.
 
 There is no unit testing in this package, as it's been handled in the implementing package.  This package has been working in production environments for several years.
 
 Help / direction is always appreciated.
+
+# WARNING
+
+This package uses scoped sessions by default.
+
+`v0.9.1` introduced a capability to use non-scoped sessions.  This appears to work, but hasn't been tested thoroughly.
+
+non-scoped sessions are not integrated with the `transaction` package, as they are incompatible with the zope transaction extension. there is probably a way to get this to work, patches welcome.
 
 
 # Overview
@@ -82,7 +90,6 @@ Sections of this code are taken from or inspired by:
 * Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
 * pyramid's @reify and set_request_property attributes
 * this was originally based on findmeon's pylons based opensocialnetwork library
-
 
 
 # Example Usage
@@ -218,6 +225,18 @@ The reader and writer classes will start with an automatic rollback.
 The logger will not.
 
 This behavior is not driven by the actual SqlAlchemy configuration - though yes, it should be.
+
+
+# `transaction` support
+
+By default, the package will try to load the following libraries:
+
+    import transaction
+    from zope.sqlalchemy import ZopeTransactionExtension
+
+This can be disabled with an environment variable
+
+	export SQLASSIST_DISABLE_TRANSACTION=1
 
 
 

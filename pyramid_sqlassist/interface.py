@@ -2,6 +2,10 @@ import logging
 log = logging.getLogger(__name__)
 
 
+# stdlib
+import os
+
+
 # sqlalchemy imports
 import sqlalchemy
 import sqlalchemy.orm as sqlalchemy_orm
@@ -14,6 +18,10 @@ from pyramid.decorator import reify
 
 # transaction support
 try:
+    # export SQLASSIST_DISABLE_TRANSACTION=1
+    SQLASSIST_DISABLE_TRANSACTION = int(os.environ.get('SQLASSIST_DISABLE_TRANSACTION', 0))
+    if SQLASSIST_DISABLE_TRANSACTION:
+        raise ImportError("import disabled")
     import transaction
     from zope.sqlalchemy import ZopeTransactionExtension
 except ImportError:
@@ -84,20 +92,46 @@ class EngineWrapper(object):
 
     engine_name = None
     sa_engine = None
-    sa_scoped_session = None
+    sa_sessionmaker = None
+    sa_session = None
+    sa_session_scoped = None
+    is_scoped = None
 
     def __init__(self, engine_name, sa_engine=None):
         if __debug__:
             log.debug("EngineWrapper.__init__()")
         self.engine_name = engine_name
         self.sa_engine = sa_engine
-        self.request = None
 
-    def init_session(self, sa_sessionmaker_params):
+    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params):
+        """
+        `is_scoped` = boolean
+        """
         if __debug__:
-            log.debug("EngineWrapper.init_session()")
+            log.debug("EngineWrapper.init_sessionmaker()")
+        sa_sessionmaker_params['bind'] = self.sa_engine
         sa_sessionmaker = sqlalchemy_orm.sessionmaker(**sa_sessionmaker_params)
-        self.sa_scoped_session = sqlalchemy_orm.scoped_session(sa_sessionmaker)
+        self.sa_sessionmaker = sa_sessionmaker
+        if is_scoped:
+            self.is_scoped = True
+            self.sa_session_scoped = sqlalchemy_orm.scoped_session(sa_sessionmaker)
+        else:
+            self.is_scoped = False
+            self.sa_session = sa_sessionmaker()
+
+    @property
+    def session(self):
+        """accessor property for sessions"""
+        if self.is_scoped:
+            return self.sa_session_scoped
+        return self.sa_session
+
+    @property
+    def _session_repr(self):
+        """private property, only used for logging"""
+        if self.is_scoped:
+            return str(self.sa_session_scoped)
+        return str(self.sa_session)
 
     def request_start(self, request, dbSessionsContainer, force=False):
         """
@@ -105,17 +139,22 @@ class EngineWrapper(object):
         """
         if __debug__:
             log.debug("EngineWrapper.request_start() | request = %s", id(request))
-            log.debug("EngineWrapper.request_start() | %s | %s", self.engine_name, str(self.sa_scoped_session))
+            log.debug("EngineWrapper.request_start() | %s | %s", self.engine_name, self._session_repr)
 
         if dbSessionsContainer._engine_status_tracker.engines[self.engine_name] == STATUS_CODES.INIT:
             # reinit the session, this only requires invoking it like a function to modify in-place
             dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = STATUS_CODES.START
-            self.sa_scoped_session()
-            self.sa_scoped_session.info['request'] = request
-            self.sa_scoped_session.rollback()
+            if self.is_scoped:
+                self.sa_session_scoped()
+                self.sa_session_scoped.info['request'] = request
+                self.sa_session_scoped.rollback()
+            else:
+                self.sa_session = self.sa_sessionmaker()
+                self.sa_session.info['request'] = request
+                self.sa_session.rollback()
         else:
             if __debug__:
-                log.debug("EngineWrapper.request_start() | %s | %s || DUPLICATE", self.engine_name, str(self.sa_scoped_session))
+                log.debug("EngineWrapper.request_start() | %s | %s || DUPLICATE", self.engine_name, self._session_repr)
 
     def request_end(self, request, dbSessionsContainer=None):
         """
@@ -123,7 +162,7 @@ class EngineWrapper(object):
         """
         if __debug__:
             log.debug("EngineWrapper.request_end() | request = %s", id(request))
-            log.debug("EngineWrapper.request_end() | %s | %s", self.engine_name, str(self.sa_scoped_session))
+            log.debug("EngineWrapper.request_end() | %s | %s", self.engine_name, self._session_repr)
 
         # optional tracking
         if dbSessionsContainer is not None:
@@ -134,7 +173,10 @@ class EngineWrapper(object):
                 dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = STATUS_CODES.END
 
         # remove no matter what
-        self.sa_scoped_session.remove()
+        if self.is_scoped:
+            self.sa_session_scoped.remove()
+        else:
+            self.sa_session.close()
 
 
 def reinit_engine(engine_name):
@@ -151,14 +193,29 @@ def reinit_engine(engine_name):
 def initialize_engine(engine_name,
                       sa_engine,
                       is_default=False,
-                      reflect=False,
-                      model_package=None,
                       use_zope=False,
                       sa_sessionmaker_params=None,
-                      is_readonly=False
+                      is_readonly=False,
+                      is_scoped=True,
+                      model_package=None,
+                      reflect=False,
                       ):
     """
     Creates new engines in the meta object and initializes the tables for each package
+
+    :params:
+
+    :is_default: bool. default `False`.  used to declare which is the default engine.
+    :use_zope: bool. default `False`.  enable to use the `ZopeTransactionExtension`.
+    :sa_sessionmaker_params: dict. passed to sqlalchemy's sessionmaker.
+    :is_readonly: bool. default `False`.  if set to true, will optimize engine for readonly access
+        `autocommit`=True
+        `expire_on_commit`=False
+    :is_scoped: bool. default `True`.  controls whether or not sessions are scoped_sessions
+
+    Not Working:
+    :model_package: - pass in the model for inspection
+    :reflect: - should we reflect?
     """
     if __debug__:
         log.debug("initialize_engine(%s)", engine_name)
@@ -174,18 +231,19 @@ def initialize_engine(engine_name,
         sa_sessionmaker_params = {}
     _sa_sessionmaker_params__defaults = {'autoflush': True,
                                          'autocommit': False,
-                                         'bind': sa_engine,
                                          }
     for i in _sa_sessionmaker_params__defaults.keys():
         if i not in sa_sessionmaker_params:
             sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
 
     if use_zope:
+        if not is_scoped:
+            raise ValueError("ZopeTransactionExtension requires scoped sessions")
         if ZopeTransactionExtension is None:
             raise ImportError('ZopeTransactionExtension was not imported earlier')
         if 'extension' in sa_sessionmaker_params:
-            raise ValueError('''I raise an error when you call initialize_engine() 
-            with `use_zope=True` and an `extension` in sa_sessionmaker_params. 
+            raise ValueError('''I raise an error when you call initialize_engine()
+            with `use_zope=True` and an `extension` in sa_sessionmaker_params.
             Sorry.''')
         sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
 
@@ -194,7 +252,7 @@ def initialize_engine(engine_name,
         sa_sessionmaker_params['expire_on_commit'] = False
 
     # this initializes the session
-    wrapped_engine.init_session(sa_sessionmaker_params)
+    wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params)
 
     # stash the wrapper
     _engine_registry['engines'][engine_name] = wrapped_engine
@@ -223,8 +281,8 @@ def get_wrapped_engine(name='!default'):
 
 
 def get_session(engine_name):
-    """get_session(engine_name): wraps get_wrapped_engine and returns the sa_scoped_session"""
-    session = get_wrapped_engine(engine_name).sa_scoped_session
+    """get_session(engine_name): wraps get_wrapped_engine and returns the sa_session_scoped"""
+    session = get_wrapped_engine(engine_name).session
     return session
 
 
@@ -244,7 +302,8 @@ def _ensure_cleanup(request, dbSessionsContainer=None):
     """ensures we have a cleanup action"""
     if request.finished_callbacks and (request_cleanup not in request.finished_callbacks):
         if dbSessionsContainer is not None:
-            f_cleanup = lambda req: request_cleanup(req, dbSessionsContainer=dbSessionsContainer)
+            def f_cleanup(req):
+                request_cleanup(req, dbSessionsContainer=dbSessionsContainer)
             request.add_finished_callback(f_cleanup)
         else:
             request.add_finished_callback(request_cleanup)
@@ -253,7 +312,7 @@ def _ensure_cleanup(request, dbSessionsContainer=None):
 class DbSessionsContainer(object):
     """
     DbSessionsContainer is the core API object.
-    
+
     This is used to store, access and manage sqlalchemy/sqlassist
 
     -- on __init__, it attaches a sqlassist.cleanup_callback to the request
@@ -288,13 +347,13 @@ class DbSessionsContainer(object):
         self._engine_status_tracker = _engine_status_tracker
         # register our cleanup
         _ensure_cleanup(request, self)
-    
+
     def _get_initialized_session(self, engine_name):
         _engine = get_wrapped_engine(engine_name)
         _engine.request_start(self.request, self)
-        _session = _engine.sa_scoped_session
+        _session = _engine.session
         return _session
-        
+
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     @reify
@@ -336,7 +395,7 @@ class DbSessionsContainer(object):
         return self.logger
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    
+
     any_preferences = ['reader', 'writer', ]
 
     @property
