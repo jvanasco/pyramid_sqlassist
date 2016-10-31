@@ -31,9 +31,8 @@ class UtilityObject(CoreObject):
         useful for situations where you have a function index on a table
         (such as indexing on the lower version of an email addresses)"""
         items = dbSession.query(self.__class__)\
-            .filter(
-                sqlalchemy.sql.func.lower(getattr(self.__class__, column)) == search.lower()
-            )\
+            .filter(sqlalchemy.sql.func.lower(getattr(self.__class__, column)) == search.lower(),
+                    )\
             .all()
         if items:
             if not allow_many:
@@ -49,13 +48,11 @@ class UtilityObject(CoreObject):
         """seaches for a name column entry with the submitted seed prefix"""
         query = dbSession.query(self.__class__)
         if prefix_only:
-            query = query.filter(
-                sqlalchemy.sql.func.lower(getattr(self.__class__, column)).startswith(seed.lower())
-            )
+            query = query.filter(sqlalchemy.sql.func.lower(getattr(self.__class__, column)).startswith(seed.lower()),
+                                 )
         else:
-            query = query.filter(
-                sqlalchemy.sql.func.lower(getattr(self.__class__, column)).contains(seed.lower())
-            )
+            query = query.filter(sqlalchemy.sql.func.lower(getattr(self.__class__, column)).contains(seed.lower()),
+                                 )
         results = query\
             .order_by(getattr(self.__class__, column).asc())\
             .all()

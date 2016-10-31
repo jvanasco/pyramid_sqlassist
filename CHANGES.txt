@@ -1,3 +1,7 @@
+0.9.3- unreleased
+	* added setup.cfg
+	* cleaned up some formatting
+
 0.9.2
 	* added `is_configure_mappers` hook to engine intialization.
 
