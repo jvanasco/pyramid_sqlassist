@@ -29,12 +29,19 @@ The package facilitates managing multiple SqlAlchemy connections under Pyramid t
 
 # How it works:
 
-When you invoke `initialize_engine`, a sqlalchmey `sessionmaker` is created for that engine.  It is wrapped in a `EngineWrapper`, which provides some conveniece methods and tracked in the `_engine_registry`
+When you invoke `initialize_engine`, a sqlalchmey `sessionmaker` is created for that engine.  It is wrapped in a `EngineWrapper`, which provides some conveniece methods and tracked in the `_engine_registry`.
 
 Sessions are managed by a `DbSessionsContainer` installed on the request.  This takes one line of code.  Really.
 
 	# custom property: `request.dbSession`
 	config.add_request_method(sqlassist.DbSessionsContainer, 'dbSession', reify=True, )
+
+Your models only need to inherit from sqlassist's `DeclaredTable` -- which is just a sqlalchemy `declarative_base`
+
+    from pyramid_sqlassist import DeclaredTable
+   
+    class MyTable(DeclaredTable):
+        pass
 
 Because Pyramid will lazily create this object, it is very lightweight.  On initialization, the container will register a cleanup routine via `add_finished_callback`.
 	
@@ -61,6 +68,32 @@ Within your code, the request can be retrieved via `object_session`
 The cleanup function will call `session.remove()` for all sessions that were used within the request.
 
 A postfork hook is available if needed via `reinit_engine`.  For all managed engines, `engine.dispose()` will be called.
+
+# Why it works:
+
+`DeclaredTable` is simply an instance of `sqlalchemy.ext.declarative.declarative_base`, bound to our own metadata
+
+	# via pyramid
+	# Recommended naming convention used by Alembic, as various different database
+	# providers will autogenerate vastly different names making migrations more
+	# difficult. See: http://alembic.zzzcomputing.com/en/latest/naming.html
+	NAMING_CONVENTION = {
+		"ix": 'ix_%(column_0_label)s',
+		"uq": "uq_%(table_name)s_%(column_0_name)s",
+		"ck": "ck_%(table_name)s_%(constraint_name)s",
+		"fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+		"pk": "pk_%(table_name)s"
+	}
+
+	# store the metadata in the package (GLOBAL)
+	_metadata = sqlalchemy.MetaData(naming_convention=NAMING_CONVENTION)
+
+	# this is used for inheritance only
+    DeclaredTable = declarative_base(metadata=_metadata)
+
+Subclassing tables from `DeclaredTable` takes care of all the core ORM setup.
+
+When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers` is triggered (this can be deferred to first usage of the ORM, but most people will want to take the performance hit on startup)
 
 
 # Misc
