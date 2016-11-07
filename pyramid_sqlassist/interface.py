@@ -183,6 +183,10 @@ def reinit_engine(engine_name):
     """
     calls `dispose` on all registered engines, instructing SqlAlchemy to drop the connection pool and begin a new one.
     this is useful as a postfork hook in uwsgi or other frameworks, under which there can be issues with database connections due to forking.
+    
+    reference:
+         Sqlalchemy Documentation: How do I use engines / connections / sessions with Python multiprocessing, or os.fork()?
+             http://docs.sqlalchemy.org/en/latest/faq/connections.html#how-do-i-use-engines-connections-sessions-with-python-multiprocessing-or-os-fork
     """
     if engine_name not in _engine_registry['engines']:
         return
@@ -401,6 +405,7 @@ class DbSessionsContainer(object):
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    # logger is not used
     any_preferences = ['reader', 'writer', ]
 
     @property

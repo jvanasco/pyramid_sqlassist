@@ -93,7 +93,7 @@ A postfork hook is available if needed via `reinit_engine`.  For all managed eng
 
 Subclassing tables from `DeclaredTable` takes care of all the core ORM setup.
 
-When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers` is triggered (this can be deferred to first usage of the ORM, but most people will want to take the performance hit on startup)
+When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers` is triggered (this can be deferred to first usage of the ORM, but most people will want to take the performance hit on startup and try to push the mapped tables into shared memory before a fork)
 
 
 # Misc
