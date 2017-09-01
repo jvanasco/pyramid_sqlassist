@@ -29,7 +29,7 @@ The package facilitates managing multiple SqlAlchemy connections under Pyramid t
 
 # How it works:
 
-When you invoke `initialize_engine`, a sqlalchmey `sessionmaker` is created for that engine.  It is wrapped in a `EngineWrapper`, which provides some conveniece methods and tracked in the `_engine_registry`.
+When you invoke `initialize_engine`, a sqlalchmey `sessionmaker` is created for that engine.  It is wrapped in a `EngineWrapper`, which provides some conveniece methods and tracked in the `_ENGINE_REGISTRY`.
 
 Sessions are managed by a `DbSessionsContainer` installed on the request.  This takes one line of code.  Really.
 

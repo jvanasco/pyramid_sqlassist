@@ -37,7 +37,7 @@ except ImportError:
 
 
 # define an engine registry (GLOBAL)
-_engine_registry = {'!default': None,
+_ENGINE_REGISTRY = {'!default': None,
                     'engines': {},
                     }
 
@@ -152,6 +152,8 @@ class EngineWrapper(object):
                 self.sa_session = self.sa_sessionmaker()
                 self.sa_session.info['request'] = request
                 self.sa_session.rollback()
+                # scoped sessions have a `session_factory`, but normal ones do not
+                self.sa_session.session_factory = self.sa_sessionmaker
         else:
             if __debug__:
                 log.debug("EngineWrapper.request_start() | %s | %s || DUPLICATE", self.engine_name, self._session_repr)
@@ -188,9 +190,9 @@ def reinit_engine(engine_name):
          Sqlalchemy Documentation: How do I use engines / connections / sessions with Python multiprocessing, or os.fork()?
              http://docs.sqlalchemy.org/en/latest/faq/connections.html#how-do-i-use-engines-connections-sessions-with-python-multiprocessing-or-os-fork
     """
-    if engine_name not in _engine_registry['engines']:
+    if engine_name not in _ENGINE_REGISTRY['engines']:
         return
-    wrapped_engine = _engine_registry['engines'][engine_name]
+    wrapped_engine = _ENGINE_REGISTRY['engines'][engine_name]
     wrapped_engine.sa_engine.dispose()
 
 
@@ -204,6 +206,7 @@ def initialize_engine(engine_name,
                       model_package=None,
                       reflect=False,
                       is_configure_mappers=True,
+                      is_autocommit=None,
                       ):
     """
     Creates new engines in the meta object and initializes the tables for each package
@@ -253,7 +256,7 @@ def initialize_engine(engine_name,
             Sorry.''')
         sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
 
-    if is_readonly:
+    if is_readonly or is_autocommit:
         sa_sessionmaker_params['autocommit'] = True
         sa_sessionmaker_params['expire_on_commit'] = False
 
@@ -261,9 +264,9 @@ def initialize_engine(engine_name,
     wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params)
 
     # stash the wrapper
-    _engine_registry['engines'][engine_name] = wrapped_engine
+    _ENGINE_REGISTRY['engines'][engine_name] = wrapped_engine
     if is_default:
-        _engine_registry['!default'] = engine_name
+        _ENGINE_REGISTRY['!default'] = engine_name
 
     if is_configure_mappers:
         sqlalchemy.orm.configure_mappers()
@@ -283,8 +286,8 @@ def get_wrapped_engine(name='!default'):
     """retrieves an engine from the registry"""
     try:
         if name == '!default':
-            name = _engine_registry['!default']
-        return _engine_registry['engines'][name]
+            name = _ENGINE_REGISTRY['!default']
+        return _ENGINE_REGISTRY['engines'][name]
     except KeyError:
         raise RuntimeError("No engine '%s' was configured" % name)
 
@@ -302,7 +305,7 @@ def request_cleanup(request, dbSessionsContainer=None):
     """
     if __debug__:
         log.debug("request_cleanup()")
-    for engine_name in _engine_registry['engines'].keys():
+    for engine_name in _ENGINE_REGISTRY['engines'].keys():
         _engine = get_wrapped_engine(engine_name)
         _engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
 
@@ -351,7 +354,7 @@ class DbSessionsContainer(object):
         self.request = request
         # build a tracker
         _engine_status_tracker = EngineStatusTracker()
-        for engine_name in _engine_registry['engines'].keys():
+        for engine_name in _ENGINE_REGISTRY['engines'].keys():
             _engine_status_tracker.engines[engine_name] = STATUS_CODES.INIT
         self._engine_status_tracker = _engine_status_tracker
         # register our cleanup
