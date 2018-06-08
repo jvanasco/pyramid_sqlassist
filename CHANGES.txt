@@ -1,3 +1,7 @@
+0.9.4
+	* small optimizations for performance
+	* added `loaded_columns_as_dict()`
+
 0.9.3
 	* added setup.cfg
 	* cleaned up some formatting
