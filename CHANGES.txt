@@ -1,3 +1,10 @@
+0.10.1
+	* added `UtilityObject.loaded_columns_as_list` function to return the loaded columns
+
+0.10.0
+	* added `UtilityObject._pyramid_request` property
+	* cleaned up modules with `__all__` definition
+
 0.9.4
 	* small optimizations for performance
 	* added `loaded_columns_as_dict()`

@@ -74,3 +74,10 @@ def reflect_tables(model_package, is_primary=False, metadata=None, sa_engine=Non
 
             # return logging to it's former state
             logging.getLogger('sqlalchemy.engine').setLevel(_level)
+
+
+# ==============================================================================
+
+
+__all__ = ('reflect_tables',
+           )

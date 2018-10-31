@@ -5,9 +5,11 @@ log = logging.getLogger(__name__)
 import sqlalchemy
 import sqlalchemy.sql
 from sqlalchemy.orm import class_mapper as sa_class_mapper
+from sqlalchemy.orm.session import object_session
 
 # this is used a bit
 func_lower = sqlalchemy.sql.func.lower
+
 
 # ==============================================================================
 
@@ -106,7 +108,7 @@ class UtilityObject(CoreObject):
 
     def columns_as_dict(self):
         """
-        Beware: this function will trigger a load of attributes if they have not been loaded yet.
+        Beware- this function will trigger a load of attributes if they have not been loaded yet.
         """
         return dict((col.name, getattr(self, col.name))
                     for col
@@ -116,12 +118,43 @@ class UtilityObject(CoreObject):
     def loaded_columns_as_dict(self):
         """
         This function will only return the loaded columns as a dict.
+
+        See Also: ``loaded_columns_as_list``
         """
         _dict = self.__dict__
         return {col.name: _dict[col.name]
                 for col in sa_class_mapper(self.__class__).mapped_table.c
                 if col.name in _dict
                 }
+
+    def loaded_columns_as_list(self, with_values=False):
+        """
+        This function will only return the loaded columns as a list.
+        By default this returns a list of the keys(columns) only.
+        Passing in the argument `with_values=True` will return a list of key(column)/value tuples, which could be blessed into a dict.
+
+        See Also: ``loaded_columns_as_dict``
+        """
+        _dict = self.__dict__
+        if with_values:
+            return [(col.name, _dict[col.name], )
+                    for col in sa_class_mapper(self.__class__).mapped_table.c
+                    if col.name in _dict
+                    ]
+        return [col.name
+                for col in sa_class_mapper(self.__class__).mapped_table.c
+                if col.name in _dict
+                ]
+
+    @property
+    def _pyramid_request(self):
+        """
+        pyramid_sqlassist stashes the `request` in `_session.info['request']`
+        this should not be memoized,
+        """
+        session = object_session(self)
+        request = session.info['request']
+        return request
 
 
 class ReflectedTable(UtilityObject):
@@ -137,3 +170,13 @@ class ReflectedTable(UtilityObject):
     __tablename__ = None
     __primarykey__ = None
     __sa_stash__ = {}
+
+
+# ==============================================================================
+
+
+__all__ = ('func_lower',
+           'CoreObject',
+           'UtilityObject',
+           'ReflectedTable',
+           )

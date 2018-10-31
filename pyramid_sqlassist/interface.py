@@ -426,3 +426,23 @@ class DbSessionsContainer(object):
             return getattr(self, _engine_name)
 
         raise ValueError('No session available.')
+
+
+# ==============================================================================
+
+__all__ = ('SQLASSIST_DISABLE_TRANSACTION',
+           '_ENGINE_REGISTRY',
+           'NAMING_CONVENTION',
+           '_metadata',
+           'DeclaredTable',
+           'STATUS_CODES',
+           'EngineStatusTracker',
+           'EngineWrapper',
+           'reinit_engine',
+           'initialize_engine',
+           'get_wrapped_engine',
+           'get_session',
+           'request_cleanup',
+           '_ensure_cleanup',
+           'DbSessionsContainer',
+           )
