@@ -1,3 +1,6 @@
+0.10.2
+	* added `EngineWrapper.dispose` function to expose the `dispose()` method of the sqlalchemy engine.
+
 0.10.1
 	* added `UtilityObject.loaded_columns_as_list` function to return the loaded columns
 

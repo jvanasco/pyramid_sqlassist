@@ -180,11 +180,15 @@ class EngineWrapper(object):
         else:
             self.sa_session.close()
 
+    def dispose(self):
+        """expose the sqlalchemy engine dispose; needed for fork-like operations"""
+        self.sa_engine.dispose()
+
 
 def reinit_engine(engine_name):
     """
     calls `dispose` on all registered engines, instructing SqlAlchemy to drop the connection pool and begin a new one.
-    this is useful as a postfork hook in uwsgi or other frameworks, under which there can be issues with database connections due to forking.
+    this is useful as a postfork hook in uwsgi or other frameworks, under which there can be issues with database connections due to forking (threads or processes).
     
     reference:
          Sqlalchemy Documentation: How do I use engines / connections / sessions with Python multiprocessing, or os.fork()?
