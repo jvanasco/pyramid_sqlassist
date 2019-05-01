@@ -4,6 +4,9 @@ log = logging.getLogger(__name__)
 # standard lib imports
 import types
 
+# pypi
+import six
+
 # sqlalchemy imports
 import sqlalchemy
 import sqlalchemy.orm as sqlalchemy_orm
@@ -39,7 +42,7 @@ def reflect_tables(model_package, is_primary=False, metadata=None, sa_engine=Non
             continue
         for module_element in dir(module):
             module_element = getattr(module, module_element)
-            if not isinstance(module_element, types.TypeType):
+            if not isinstance(module_element, type):
                 continue
             if issubclass(module_element, ReflectedTable):
                 to_reflect.append(module_element)
@@ -62,7 +65,7 @@ def reflect_tables(model_package, is_primary=False, metadata=None, sa_engine=Non
             _primarykey = _class.__primarykey__
             primarykey = []
             if _primarykey:
-                if isinstance(_primarykey, types.StringTypes):
+                if isinstance(_primarykey, six.string_types):
                     primarykey.append(getattr(table, _primarykey))
                 elif isinstance(_primarykey, list):
                     for _column_name in _primarykey:
