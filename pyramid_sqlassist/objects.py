@@ -15,10 +15,14 @@ func_lower = sqlalchemy.sql.func.lower
 
 
 class CoreObject(object):
+    """Core Database Object Mixin
+    """
     __table_pkey__ = None
 
 
 class UtilityObject(CoreObject):
+    """``UtilityObject`` is a class that provides some common tools.
+    """
 
     def get__by__id(self, dbSession, id, id_column='id'):
         """gets an item by an id column named 'id'.  id column can be overriden"""
@@ -52,7 +56,7 @@ class UtilityObject(CoreObject):
         return None
 
     def get__by__column__similar(self, dbSession, column, seed, prefix_only=True):
-        """seaches for a name column entry with the submitted seed prefix"""
+        """searches for a name column entry with the submitted seed prefix"""
         _cls = self.__class__
         query = dbSession.query(_cls)
         if prefix_only:
@@ -67,7 +71,7 @@ class UtilityObject(CoreObject):
         return results
 
     def get__by__column__exact_then_ilike(self, dbSession, column, seed):
-        """ seaches for an exact, then case-insensitive version of the name column"""
+        """searches for an exact match, then case-insensitive version of the name column if no match is found"""
         _cls = self.__class__
         item = dbSession.query(_cls).filter(getattr(_cls, column) == seed).first()
         if not item:

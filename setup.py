@@ -18,10 +18,13 @@ with open(
         r".*__VERSION__ = '(.*?)'",
         re.S).match(v_file.read()).group(1)
 
-requires = ['SQLAlchemy>=0.9.0',
+requires = ['SQLAlchemy>=1.2.0',
             'pyramid',
             'six',
             ]
+requires_tests = ['pyramid_mako',
+                  'webtest',
+                  ]
 
 setup(
     name="pyramid_sqlassist",
@@ -43,5 +46,6 @@ setup(
     license="MIT",
     zip_safe=False,
     install_requires = requires,
+    tests_require = requires + requires_tests,
     test_suite="tests",
 )

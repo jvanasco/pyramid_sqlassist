@@ -68,6 +68,10 @@ class STATUS_CODES(object):
     START = 1
     END = 2
 
+    _readable = {INIT: 'INIT',
+                 START: 'START',
+                 END: 'END',
+                 }
 
 # ------------------------------------------------------------------------------
 
@@ -103,7 +107,7 @@ class EngineWrapper(object):
         self.engine_name = engine_name
         self.sa_engine = sa_engine
 
-    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params):
+    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params, ):
         """
         `is_scoped` = boolean
         """
@@ -213,7 +217,8 @@ def initialize_engine(engine_name,
                       is_autocommit=None,
                       ):
     """
-    Creates new engines in the meta object and initializes the tables for each package
+    Wraps each engine in an `EngineWrapper`
+    Registers each engine into the `_ENGINE_REGISTRY`
 
     :params:
 
@@ -265,7 +270,7 @@ def initialize_engine(engine_name,
         sa_sessionmaker_params['expire_on_commit'] = False
 
     # this initializes the session
-    wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params)
+    wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params, )
 
     # stash the wrapper
     _ENGINE_REGISTRY['engines'][engine_name] = wrapped_engine
@@ -355,7 +360,7 @@ class DbSessionsContainer(object):
     _engine_status_tracker = None
 
     def __init__(self, request):
-        self.request = request
+        self._request = request
         # build a tracker
         _engine_status_tracker = EngineStatusTracker()
         for engine_name in _ENGINE_REGISTRY['engines'].keys():
@@ -366,7 +371,7 @@ class DbSessionsContainer(object):
 
     def _get_initialized_session(self, engine_name):
         _engine = get_wrapped_engine(engine_name)
-        _engine.request_start(self.request, self)
+        _engine.request_start(self._request, self)
         _session = _engine.session
         return _session
 
@@ -412,24 +417,65 @@ class DbSessionsContainer(object):
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    # logger is not used
+    # logger is not used as a default preference
     any_preferences = ['reader', 'writer', ]
 
     @property
     def any(self):
+        """
+        get any of the standard database handles in `any_preferences` (default: reader, writer)
+        this is a `@property` convenience interface to `.get_any()`
+        """
         return self.get_any()
 
     def get_any(self):
+        """
+        get any of the standard database handles in `any_preferences` (default: reader, writer)
+        
+        this will first try the properties memoized by Pyramid's `@reify` before invoking other attemps
+        """
+        # keep a list of what we've tried
+        _tried = []
+
         # try the memoized properties first
         _as_dict = self.__dict__
         for _engine_name in self.any_preferences:
             if _engine_name in _as_dict:
+                _tried.append(_engine_name)
                 return _as_dict[_engine_name]
-
+        # invoke them next
         for _engine_name in self.any_preferences:
-            return getattr(self, _engine_name)
+            if _engine_name not in _tried:
+                return getattr(self, _engine_name)
 
         raise ValueError('No session available.')
+
+
+
+def register_request_method(config, request_method_name, dbContainerClass=DbSessionsContainer):
+    """
+    ``register_request_method`` invokes Pyramid's ``add_request_method`` and 
+    stashes some information to enable debugtoolbar support.
+    
+    usage:
+
+        def initialize_database(config, settings, is_scoped=None):
+            engine_reader = sqlalchemy.engine_from_config(settings, prefix="sqlalchemy_reader.")
+            pyramid_sqlassist.initialize_engine('reader', engine_reader)
+            pyramid_sqlassist.register_request_method(config, 'dbSession')
+            
+            
+    args:
+        :config object: Pyramid config object
+        :request_method_name string: name to be registered as Pyramid request attribute
+        :dbContainerClass class: class to be registered for Pyramid request attribute. default `DbSessionsContainer`
+    """
+    config.registry.pyramid_sqlassist = {'request_method_name': request_method_name,
+                                         }
+    config.add_request_method(dbContainerClass,
+                              request_method_name,
+                              reify=True,
+                              )
 
 
 # ==============================================================================
@@ -449,4 +495,5 @@ __all__ = ('SQLASSIST_DISABLE_TRANSACTION',
            'request_cleanup',
            '_ensure_cleanup',
            'DbSessionsContainer',
+           'register_request_method'
            )

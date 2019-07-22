@@ -1,49 +1,92 @@
 sqlassist
 =========
 
-SqlAssist offers **experimental** support for multiple SqlAlchemy connections under Pyramid.
+SqlAssist offers streamlined support handling multiple SqlAlchemy connections under Pyramid.
 
-Experimental means that it does things you shouldn't necessarily do, and it's a work in progress to automate certain functionalities.
-
-The `v0.9.0` release is a partial rewrite of the `v0.1.x` version and is somewhat incompatible.
-
-Tweens were deprecated for explicit request methods.
-
-There is no unit testing in this package, as it's been handled in the implementing package.  This package has been working in production environments for several years.
+This package has been working in production environments for several years.
 
 Help / direction is always appreciated.
+
 
 # WARNING
 
 This package uses scoped sessions by default.
 
-`v0.9.1` introduced a capability to use non-scoped sessions.  This appears to work, but hasn't been tested thoroughly.
+`v0.9.1` introduced a capability to use non-scoped sessions.  This appears to work, but hasn't been tested as thoroughly as I'd like.
 
-non-scoped sessions are not integrated with the `transaction` package, as they are incompatible with the zope transaction extension. there is probably a way to get this to work, patches welcome.
+non-scoped sessions are not integrated with the `transaction` package, as they are incompatible with the zope transaction extension. There is probably a way to get this to work, patches welcome.
 
 
 # Overview
 
 The package facilitates managing multiple SqlAlchemy connections under Pyramid through a single API.  It has been used in Celery too.
 
+There are 4 steps to using this package:
 
-# How it works:
+1. It is the job of your Pyramid application's `model` to create SqlAlchemy engines.
+2. Each created engine should be passed into `pyramid_sqlassist.initialize_engine`
+3. After initializing all the engines, invoke `pyramid_sqlassist.register_request_method` with the name of the request attribute you wish to use
+4. SqlAlchemy classes in your model must inherit from `pyramid_sqlassist.DeclaredTable` -- which is just an instance of SqlAlchemy's `declarative_base`
 
-When you invoke `initialize_engine`, a sqlalchmey `sessionmaker` is created for that engine.  It is wrapped in a `EngineWrapper`, which provides some conveniece methods and tracked in the `_ENGINE_REGISTRY`.
 
-Sessions are managed by a `DbSessionsContainer` installed on the request.  This takes one line of code.  Really.
+Note: If your Pyramid application connects to the database BEFORE a process fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`
 
-	# custom property: `request.dbSession`
-	config.add_request_method(sqlassist.DbSessionsContainer, 'dbSession', reify=True, )
 
-Your models only need to inherit from sqlassist's `DeclaredTable` -- which is just a sqlalchemy `declarative_base`
+## What does all this accomplish?
 
-    from pyramid_sqlassist import DeclaredTable
-   
-    class MyTable(DeclaredTable):
-        pass
+`pyramid_sqlassist` maintains a private Python dict in it's namespace: `_ENGINE_REGISTRY`.  
 
-Because Pyramid will lazily create this object, it is very lightweight.  On initialization, the container will register a cleanup routine via `add_finished_callback`.
+Calling  `initialize_engine` will wrap each SqlAlchemy engine into a SqlAssist `EngineWrapper` and then register it into the `_ENGINE_REGISTRY`.  The wrapper contains a SqlAlchemy `sessionmaker` created for each engine, along with some convenience functions.
+
+Calling `register_request_method` will invoke Pyramid's `add_request_method` to add a `DbSessionsContainer` onto the Pyramid Request as a specified attribute name.
+
+The `DbSessionsContainer` automatically register a cleanup function via Pyramid's `add_finished_callback` if the database is used.
+
+
+# Example
+
+This is an example `model.py` for a pyramid app, which creates a READER and WRITER connection.
+
+
+    # model.py
+	import sqlalchemy
+	import pyramid_sqlassist
+
+	from . import model_objects
+
+
+    def initialize_database(config, settings):
+
+		engine_reader = sqlalchemy.engine_from_config(settings,
+													  prefix="sqlalchemy_reader.",
+													  )
+		pyramid_sqlassist.initialize_engine('reader',
+											engine_reader,
+											is_default=False,
+											model_package=model_objects,
+											use_zope=False,
+											is_scoped=is_scoped,
+											)
+
+		engine_writer = sqlalchemy.engine_from_config(settings,
+													  prefix="sqlalchemy_writer.",
+													  echo=sqlalchemy_echo,
+													  )
+		pyramid_sqlassist.initialize_engine('writer',
+											engine_writer,
+											is_default=False,
+											model_package=model_objects,
+											use_zope=False,
+											is_scoped=is_scoped,
+											)
+
+		pyramid_sqlassist.register_request_method(config, 'dbSession')
+
+
+
+# Miscellaneous info
+
+Because Pyramid will lazily create the request database interaction object it is very lightweight.  On initialization, the container will register a cleanup routine via `add_finished_callback`.
 	
 The `DbSessionsContainer` exposes some methods:
 
@@ -96,15 +139,15 @@ Subclassing tables from `DeclaredTable` takes care of all the core ORM setup.
 When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers` is triggered (this can be deferred to first usage of the ORM, but most people will want to take the performance hit on startup and try to push the mapped tables into shared memory before a fork)
 
 
-# Misc
+# Misc Objects
 
 ## `objects.UtilityObject`
 
 * core object with utility methods for quick prototyping of applications
 
-## `tools`
+## `.tools`
 
-* this is all testing and bad code
+* this namepace is currently unused ; it houses some in-progress code for supporting table reflection
 
 
 # Notes

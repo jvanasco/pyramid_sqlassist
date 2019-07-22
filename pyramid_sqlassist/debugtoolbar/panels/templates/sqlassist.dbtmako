@@ -1,0 +1,112 @@
+<%! from pyramid_sqlassist.interface import STATUS_CODES %>
+<%! from pyramid_sqlassist.interface import _ENGINE_REGISTRY %>
+% if not registry_data:
+	<p>
+		There was an issue on configuration
+	</p>
+% else:
+	<p>
+		The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.${registry_data['request_method_name']}</code>.
+	</p>
+	
+	
+	<h3>Active on this Request</h3>
+	<%
+		attributes = dbSession.__dict__
+		connections = [i for i in attributes.keys() if i[0] != '_']
+	%>
+	% if not connections:
+		<p>
+			no connections were active on this request.
+		</p>
+	% else:
+		<table class="table table-striped table-condensed">
+			<thead>
+				<tr>
+					<th>connection</th>
+					<th>connection object</th>
+				</tr>
+			</thead>
+			<tbody>
+				% for c in connections:
+					<tr>
+						<th>${c}</th>
+						<td>${attributes[c]}</td>
+					</tr>
+				% endfor
+			</tbody>
+		</table>
+	% endif
+
+	<hr/>
+
+	<h3>Engine Status Tracker</h3>
+	<ul>
+		<li><code>INIT</code> suggests an engine has not been used.</li>
+		<li><code>START</code> indicates an engine is in use for this request, and has not been cleaned up.</li>
+		<li><code>END</code> indicates an engine has been used in this request and has been properly cleaned up.</li>
+	</ul>
+	<table class="table table-striped table-condensed">
+		<thead>
+			<tr>
+				<th>engine</th>
+				<th>status</th>
+				<th>status code</th>
+			</tr>
+		</thead>
+		<tbody>
+			% for engine in dbSession._engine_status_tracker.engines.items():
+				<tr>
+					<th>${engine[0]}</th>
+					<td><code>${STATUS_CODES._readable[engine[1]]}</code></td>
+					<td><code>${engine[1]}</code></td>
+				</tr>
+			% endfor
+		</tbody>
+	</table>
+
+	<hr/>
+
+	<h3>Application Engine Registry</h3>
+	<table class="table table-striped table-condensed">
+		<thead>
+			<tr>
+				<th>engine</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<th>!default</th>
+				<td>${_ENGINE_REGISTRY['!default']}</td>
+			</tr>
+			% for (engine_name, engine) in _ENGINE_REGISTRY['engines'].items():
+				<tr>
+					<th>${engine_name}</th>
+					<td>
+						<table class="table table-striped table-condensed">
+							<tr>
+								<th>is_scoped</th>
+								<td><code>${engine.is_scoped}</code></td>
+							</tr>
+							<tr>
+								<th>sa_sessionmaker</th>
+								<td>
+									${engine.sa_sessionmaker}
+									## <br/>
+									## <ul>
+									## 	% for (k, v) in engine.sa_sessionmaker.__dict__['kw'].items():
+									## 		<li>
+									## 			<b>${k}:</b> ${v}
+									## 		</li>
+									## 	% endfor
+									## </ul>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			% endfor
+		</tbody>
+	</table>
+
+% endif

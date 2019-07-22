@@ -1,0 +1,4 @@
+tests are located in tests
+
+`export PYRAMID_SQLASSIST_DEBUG=1`
+	extra debugging during tests
