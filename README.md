@@ -1,7 +1,7 @@
 sqlassist
 =========
 
-SqlAssist offers a streamlined integration for handling multiple SqlAlchemy database connections under Pyramid.
+SqlAssist offers a streamlined integration for handling multiple [SqlAlchemy](https://github.com/sqlalchemy/sqlalchemy) database connections under [Pyramid](https://github.com/pylons/pyramid).
 
 SqlAssist also offers some utility mixin/base classes for SqlAlchemy applications that are useful for debugging applications.
 
@@ -166,9 +166,9 @@ Sections of this code were originally taken from or inspired by:
 * SqlAlchemy docs
   * Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
   * Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
-* Mike Orr's package 'sqlahelper'
 * Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
 * Pyramid's `@reify` decorator and `set_request_property` attribute
+* Mike Orr's package 'sqlahelper'
 * this was originally based on FindMeOn™'s Pylons based library "opensocialnetwork"
 
 
