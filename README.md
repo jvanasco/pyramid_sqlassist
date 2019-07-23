@@ -1,11 +1,13 @@
 sqlassist
 =========
 
-SqlAssist offers streamlined support handling multiple SqlAlchemy connections under Pyramid.
+SqlAssist offers a streamlined integration for handling multiple SqlAlchemy database connections under Pyramid.
+
+SqlAssist also offers some utility mixin/base classes for SqlAlchemy applications that are useful for debugging applications.
 
 This package has been working in production environments for several years.
 
-With 0.12.0, there have been some API changes and the introduction of a `pyramid_debugtoolbar` panel
+With `v0.12.0`, there have been some API changes and the introduction of a `pyramid_debugtoolbar` panel
 
 Help / direction is always appreciated.
 
@@ -31,7 +33,7 @@ There are 4 steps to using this package:
 4. SqlAlchemy classes in your model must inherit from `pyramid_sqlassist.DeclaredTable` -- which is just an instance of SqlAlchemy's `declarative_base`
 
 
-Note: If your Pyramid application connects to the database BEFORE a process fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`
+Note: If your Pyramid application connects to the database BEFORE a process fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`.  This can be streamlined with the [`pyramid_forksafe`](https://github.com/jvanasco/pyramid_forksafe) plugin. 
 
 
 ## What does all this accomplish?
