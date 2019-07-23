@@ -45,7 +45,7 @@ The `DbSessionsContainer` automatically register a cleanup function via Pyramid'
 
 # Example
 
-This is an example `model.py` for a pyramid app, which creates a READER and WRITER connection.
+This is an example `model.py` for a Pyramid app, which creates a READER and WRITER connection.
 
 
     # model.py
@@ -100,7 +100,7 @@ The `DbSessionsContainer` exposes some methods:
 * `get_logger` - method. lazy access to "logger" connection
 * `get_any` - method. tries to find memoized connections. otherwise will invoke a method.
 
-On first access of every "session", the container will re-initialize that session by invoking it as a callable, issuing a `.rollback()`, and stashing the current pyramid request in the session's `info` dict. 
+On first access of every "session", the container will re-initialize that session by invoking it as a callable, issuing a `.rollback()`, and stashing the current Pyramid request in the session's `info` dict. 
 
 Within your code, the request can be retrieved via `object_session`
 
@@ -116,7 +116,7 @@ A postfork hook is available if needed via `reinit_engine`.  For all managed eng
 
 `DeclaredTable` is simply an instance of `sqlalchemy.ext.declarative.declarative_base`, bound to our own metadata
 
-	# via pyramid
+	# via Pyramid
 	# Recommended naming convention used by Alembic, as various different database
 	# providers will autogenerate vastly different names making migrations more
 	# difficult. See: http://alembic.zzzcomputing.com/en/latest/naming.html
@@ -157,15 +157,15 @@ When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers
 
 # Thanks
 
-Sections of this code are taken from or inspired by:
+Sections of this code were originally taken from or inspired by:
 
 * SqlAlchemy docs
-** Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
-** Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
+  * Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
+  * Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
 * Mike Orr's package 'sqlahelper'
 * Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
-* pyramid's @reify and set_request_property attributes
-* this was originally based on findmeon's pylons based opensocialnetwork library
+* Pyramid's `@reify` decorator and `set_request_property` attribute
+* this was originally based on FindMeOn™'s Pylons based library "opensocialnetwork"
 
 
 # Example Usage
@@ -276,9 +276,9 @@ in your handlers, you have this ( sqlalchemy is only imported to grab an excepti
 If you inherit from this class, your SqlAlchemy objects have some convenience methods:
 
 * `get__by__id`( self, dbSession, id , id_column='id' ):
-* `get__by__column__lower`( self, dbSession, column , search , allow_many=False ):
-* `get__by__column__similar`( self, dbSession , column , seed , prefix_only=True):
-* `get__by__column__exact_then_ilike`( self, dbSession, column, seed ):
+* `get__by__column__lower`( self, dbSession, column_name , search , allow_many=False ):
+* `get__by__column__similar`( self, dbSession , column_name , seed , prefix_only=True):
+* `get__by__column__exact_then_ilike`( self, dbSession, column_name, seed ):
 * `get__range`( self, dbSession, start=0, limit=None, sort_direction='asc', order_col=None, order_case_sensitive=True, filters=[], debug_query=False):
 * `columns_as_dict`(self):
 
@@ -296,11 +296,7 @@ This convenience class ONLY deals with 3 connections right now :
 
 If you have more/different names - subclass (or create a patch to deal with dynamic names!)  I didn't have time for that.
 
-The reader and writer classes will start with an automatic rollback.
-
-The logger will not.
-
-This behavior is not driven by the actual SqlAlchemy configuration - though yes, it should be.
+The reader and writer classes will start with an automatic rollback; The logger will not.
 
 
 # `transaction` support
@@ -322,19 +318,19 @@ This can be disabled with an environment variable
 
 if you're using zope & transaction modules :
 
-* you need to call "transaction.commit"
-* remember that `mark_changed` exists!
+* you need to call `transaction.commit`
+* IMPORTANT remember that `mark_changed` exists!
 
-if you're not using zope & transaction modules :
+if you're not using "zope" & "transaction" modules :
 
-* you need to call "dbession_writer.commit()"
+* you need to call "dbSession_writer.commit()"
 
 ## Rollbacks
 
-you want to call rollback on the specific dbSessions to control what is in each one
+you want to call `rollback` on the specific database sessions to control what is in each one
 
 
-## catching exceptions if you're trying to support both transaction.commit() and dbsession.commit()
+## catching exceptions if you're trying to support both `transaction.commit()` and `dbsession.commit()`
 
 let's say you do this:
 
@@ -350,12 +346,12 @@ let's say you do this:
 	# commit
 	transaction.commit()
 
-in this event, both object1 and object2 will be committed by transaction.commit()
+in this event, both object1 and object2 will be committed by `transaction.commit()`
 
-You must explicitly call a rollback after the Assertion Error
+You must explicitly invoke a `rollback` after the `AssertionError`
 
 
 # Reflected Tables
 
-this is disabled right now.  it's totally janky.  someone else can fix it if they want
+this package once supported trying to handle table reflection.  It is being removed unless someone wants to do a better job.
 
