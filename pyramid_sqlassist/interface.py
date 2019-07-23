@@ -30,7 +30,7 @@ except ImportError:
 
 
 # # local imports
-# from . import tools
+# from .in_progress import tools
 
 
 # ==============================================================================
@@ -321,7 +321,7 @@ def request_cleanup(request, dbSessionsContainer=None):
 
 def _ensure_cleanup(request, dbSessionsContainer=None):
     """ensures we have a cleanup action"""
-    if request.finished_callbacks and (request_cleanup not in request.finished_callbacks):
+    if (request_cleanup not in request.finished_callbacks):
         if dbSessionsContainer is not None:
             def f_cleanup(req):
                 request_cleanup(req, dbSessionsContainer=dbSessionsContainer)

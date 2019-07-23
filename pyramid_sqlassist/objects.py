@@ -15,35 +15,45 @@ func_lower = sqlalchemy.sql.func.lower
 
 
 class CoreObject(object):
-    """Core Database Object Mixin
+    """Core Database Object class/Mixin
     """
     __table_pkey__ = None
 
 
 class UtilityObject(CoreObject):
-    """``UtilityObject`` is a class that provides some common tools.
+    """
+    ``UtilityObject`` is a class that provides some common query methods.
+    This is intended to simplify app development and debugging by bootstrapping
+    some common queries which can be used within `pdb` or simple scrips. The
+    functionality provided by this class is best re-written within your app/model
+    as there is a bit of overhead in inspecting the object to build the queries
+    off of the requisite columns.
     """
 
-    def get__by__id(self, dbSession, id, id_column='id'):
-        """gets an item by an id column named 'id'.  id column can be overriden"""
-        _cls = self.__class__
-        if not hasattr(_cls, id_column) and hasattr(self, '__table_pkey__'):
-            id_column = self.__table_pkey__
-        id_col = getattr(_cls, id_column)
+    @classmethod
+    def get__by__id(cls, dbSession, id, id_column='id'):
+        """classmethod. gets an item by an id column named 'id'.  id column can be overriden"""
+        # cls = self.__class__
+        if not hasattr(cls, id_column) and hasattr(cls, '__table_pkey__'):
+            id_column = cls.__table_pkey__
+        id_col = getattr(cls, id_column)
         if isinstance(id, (list, tuple)):
-            return dbSession.query(_cls).filter(id_col.in_(id)).all()
+            return dbSession.query(cls).filter(id_col.in_(id)).all()
         else:
             id_dict = {id_column: id}
-            return dbSession.query(_cls).filter_by(**id_dict).first()
+            return dbSession.query(cls).filter_by(**id_dict).first()
 
-    def get__by__column__lower(self, dbSession, column, search, allow_many=False):
-        """gets items from the database based on a lowercase version of the column.
+    @classmethod
+    def get__by__column__lower(cls, dbSession, column_name, search, allow_many=False, offset=0, limit=None):
+        """classmethod. gets items from the database based on a lowercase version of the column.
         useful for situations where you have a function index on a table
         (such as indexing on the lower version of an email addresses)"""
-        _cls = self.__class__
-        items = dbSession.query(_cls)\
-            .filter(func_lower(getattr(_cls, column)) == search.lower(),
+        # cls = self.__class__
+        items = dbSession.query(cls)\
+            .filter(func_lower(getattr(cls, column_name)) == search.lower(),
                     )\
+            .offset(offset)\
+            .limit(limit)\
             .all()
         if items:
             if not allow_many:
@@ -55,41 +65,46 @@ class UtilityObject(CoreObject):
                 return items
         return None
 
-    def get__by__column__similar(self, dbSession, column, seed, prefix_only=True):
-        """searches for a name column entry with the submitted seed prefix"""
-        _cls = self.__class__
-        query = dbSession.query(_cls)
+    @classmethod
+    def get__by__column__similar(cls, dbSession, column_name, seed, prefix_only=True, offset=0, limit=None):
+        """classmethod. searches for a name column entry with the submitted seed prefix"""
+        # cls = self.__class__
+        query = dbSession.query(cls)
         if prefix_only:
-            query = query.filter(func_lower(getattr(_cls, column)).startswith(seed.lower()),
+            query = query.filter(func_lower(getattr(cls, column_name)).startswith(seed.lower()),
                                  )
         else:
-            query = query.filter(func_lower(getattr(_cls, column)).contains(seed.lower()),
+            query = query.filter(func_lower(getattr(cls, column_name)).contains(seed.lower()),
                                  )
         results = query\
-            .order_by(getattr(_cls, column).asc())\
+            .order_by(getattr(cls, column_name).asc())\
+            .offset(offset)\
+            .limit(limit)\
             .all()
         return results
 
-    def get__by__column__exact_then_ilike(self, dbSession, column, seed):
-        """searches for an exact match, then case-insensitive version of the name column if no match is found"""
-        _cls = self.__class__
-        item = dbSession.query(_cls).filter(getattr(_cls, column) == seed).first()
+    @classmethod
+    def get__by__column__exact_then_ilike(cls, dbSession, column_name, seed):
+        """classmethod. searches for an exact match, then case-insensitive version of the name column if no match is found"""
+        # cls = self.__class__
+        item = dbSession.query(cls).filter(getattr(cls, column_name) == seed).first()
         if not item:
-            item = dbSession.query(_cls).filter(getattr(_cls, column).ilike(seed)).first()
+            item = dbSession.query(cls).filter(getattr(cls, column_name).ilike(seed)).first()
         return item
 
-    def get__range(self, dbSession, start=0, limit=None, sort_direction='asc', order_col=None, order_case_sensitive=True, filters=[], debug_query=False):
-        """gets a range of items"""
-        _cls = self.__class__
+    @classmethod
+    def get__range(cls, dbSession, offset=0, limit=None, sort_direction='asc', order_col=None, order_case_sensitive=True, filters=[], debug_query=False):
+        """classmethod. gets a range of items"""
+        # cls = self.__class__
         if not order_col:
             order_col = 'id'
-        query = dbSession.query(_cls)
+        query = dbSession.query(cls)
         for filter in filters:
             query = query.filter(filter)
         for col in order_col.split(','):
-            # declared columns do not have self.__class__.c
+            # declared columns do not have cls.__class__.c
             # reflected columns did in earlier sqlalchemy
-            col = getattr(_cls, col)
+            col = getattr(cls, col)
             if sort_direction == 'asc':
                 if order_case_sensitive:
                     query = query.order_by(col.asc())
@@ -102,7 +117,7 @@ class UtilityObject(CoreObject):
                     query = query.order_by(func_lower(col).desc())
             else:
                 raise ValueError('invalid sort direction')
-        query = query.offset(start).limit(limit)
+        query = query.offset(offset).limit(limit)
         results = query.all()
         if __debug__ and debug_query:
             log.debug("get__range")
@@ -154,26 +169,11 @@ class UtilityObject(CoreObject):
     def _pyramid_request(self):
         """
         pyramid_sqlassist stashes the `request` in `_session.info['request']`
-        this should not be memoized,
+        this should not be memoized, as an object can be merged across sessions
         """
         session = object_session(self)
         request = session.info['request']
         return request
-
-
-class ReflectedTable(UtilityObject):
-    """Base class for database objects that are mapped to tables by reflection.
-       Have your various model classes inherit from this class.
-       If class.__tablename__ is defined, it will reflect that table.
-       If class.__primarykey__ is defined, it will set that as the primary key.
-
-       Example:
-          class Useraccount(ReflectedTable):
-              __tablename__ = "useraccount"
-    """
-    __tablename__ = None
-    __primarykey__ = None
-    __sa_stash__ = {}
 
 
 # ==============================================================================
@@ -182,5 +182,4 @@ class ReflectedTable(UtilityObject):
 __all__ = ('func_lower',
            'CoreObject',
            'UtilityObject',
-           'ReflectedTable',
            )

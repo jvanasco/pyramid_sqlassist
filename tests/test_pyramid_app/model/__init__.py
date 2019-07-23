@@ -45,4 +45,36 @@ def initialize_database(config, settings, is_scoped=None):
                                         is_scoped=is_scoped,
                                         )
     pyramid_sqlassist.register_request_method(config, 'dbSession')
+    
 
+    try:
+        model_objects.DeclaredTable.metadata.create_all(engine_reader)
+    except Exception as exc:
+        print(exc)
+    try:
+        model_objects.DeclaredTable.metadata.create_all(engine_writer)
+    except Exception as exc:
+        print(exc)
+
+
+def insert_initial_records(dbSession):
+    import datetime
+    
+    _utcnow = datetime.datetime.utcnow()
+    _data = ((1, 11, 1, 'AAAAA', 'AAAAA'),
+             (2, 12, 2, 'aaaaa', 'aaaaa'),
+             (3, 13, 3, 'BBBBB', 'Dbbbb'),
+             (4, 14, 4, 'ccccc', 'cDDDD'),
+             )
+    for _datum in _data:
+        f = model_objects.FooObject()
+        f.id = _datum[0]
+        f.id_alt = _datum[1]
+        f.timestamp = _utcnow
+        f.status_id = _datum[2]
+        f.status = _datum[3]
+        f.status_alt = _datum[4]
+        dbSession.add(f)
+        dbSession.flush()
+    
+    

@@ -41,7 +41,23 @@ def main(global_config, **settings):
 
     # libraries for ease
     config.include('pyramid_mako')
+
     config.add_route("splash", "/")
+    config.add_route("test:dbSession", "/tests/dbSession")
+    config.add_route("test:dbSession:callbacks", "/tests/dbSession/callbacks")
+
+    config.add_route("test:dbSession_reader", "/tests/dbSession_reader")
+    config.add_route("test:dbSession_reader:query", "/tests/dbSession_reader/query")
+    config.add_route("test:dbSession_reader:query_status", "/tests/dbSession_reader/query_status")
+
+    config.add_route("test:dbSession_writer", "/tests/dbSession_writer")
+    config.add_route("test:dbSession_writer:query", "/tests/dbSession_writer/query")
+    config.add_route("test:dbSession_writer:query_status", "/tests/dbSession_writer/query_status")
+
+    config.add_route("test:dbSession_mixed", "/tests/dbSession_mixed")
+    config.add_route("test:dbSession_mixed:query", "/tests/dbSession_mixed/query")
+    config.add_route("test:dbSession_mixed:query_status", "/tests/dbSession_mixed/query_status")
+
 
     # model & views
     config.scan(".views")
