@@ -1,13 +1,15 @@
 from __future__ import print_function
 
 # stdlib
-import unittest
 import pdb
-
+import re
+import unittest
 
 # pyramid testing requirements
 from pyramid import testing
 from pyramid.interfaces import IRequestExtensions
+from pyramid.response import Response
+from pyramid.request import Request
 
 # pypi
 import sqlalchemy
@@ -20,6 +22,9 @@ from .test_pyramid_app.model import model_objects
 
 # ==============================================================================
 
+
+# used to ensure the toolbar link is injected into requests
+re_toolbar_link = re.compile('(?:href="http://localhost)(/_debug_toolbar/[\d]+)"')
 
 
 class TestPyramidAppHarness(object):
@@ -53,7 +58,7 @@ class TestPyramidAppHarness(object):
                                             use_zope=False,
                                             )
         pyramid_sqlassist.register_request_method(self.config, 'dbSession')
-    
+
         try:
             model_objects.DeclaredTable.metadata.create_all(engine_reader)
         except Exception as exc:
@@ -91,7 +96,7 @@ class TestPyramidRequest(TestPyramidAppHarness, unittest.TestCase):
     def test_query_reader(self):
         self.assertNotIn('finished_callbacks', self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.reader.query(model_objects.FooObject).first()
+        touched = self.request.dbSession.reader.query(model_objects.FooObject).first()  # noqa
         self.assertEqual(1, self.request.dbSession._engine_status_tracker.engines['reader'])
         self.assertEqual(0, self.request.dbSession._engine_status_tracker.engines['writer'])
         self.assertIn('finished_callbacks', self.request.__dict__)
@@ -99,7 +104,7 @@ class TestPyramidRequest(TestPyramidAppHarness, unittest.TestCase):
     def test_query_writer(self):
         self.assertNotIn('finished_callbacks', self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.writer.query(model_objects.FooObject).first()
+        touched = self.request.dbSession.writer.query(model_objects.FooObject).first()  # noqa
         self.assertEqual(0, self.request.dbSession._engine_status_tracker.engines['reader'])
         self.assertEqual(1, self.request.dbSession._engine_status_tracker.engines['writer'])
         self.assertIn('finished_callbacks', self.request.__dict__)
@@ -107,8 +112,8 @@ class TestPyramidRequest(TestPyramidAppHarness, unittest.TestCase):
     def test_query_mixed(self):
         self.assertNotIn('finished_callbacks', self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.reader.query(model_objects.FooObject).first()
-        touched = self.request.dbSession.writer.query(model_objects.FooObject).first()
+        touched = self.request.dbSession.reader.query(model_objects.FooObject).first()  # noqa
+        touched = self.request.dbSession.writer.query(model_objects.FooObject).first()  # noqa
         self.assertEqual(1, self.request.dbSession._engine_status_tracker.engines['reader'])
         self.assertEqual(1, self.request.dbSession._engine_status_tracker.engines['writer'])
         self.assertIn('finished_callbacks', self.request.__dict__)
@@ -142,7 +147,6 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
         self.assertIsInstance(foos_alt, list)
         self.assertEqual(len(foos_alt), 3)
         self.assertSequenceEqual([i.id_alt for i in foos], _query_ids_alt)
-        
 
     def test__get__by__column__lower(self):
         self.assertRaises(ValueError,
@@ -236,7 +240,7 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
     def test__loaded_columns_as_dict(self):
         # test all columns
         foo1 = self.request.dbSession.writer.query(model_objects.FooObject)\
-            .filter(model_objects.FooObject.id==1)\
+            .filter(model_objects.FooObject.id == 1)\
             .first()
         self.assertIsNotNone(foo1)
         self.assertEqual(foo1.id, 1)
@@ -247,7 +251,7 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
 
         # test loadonly
         foo2 = self.request.dbSession.writer.query(model_objects.FooObject)\
-            .filter(model_objects.FooObject.id==2)\
+            .filter(model_objects.FooObject.id == 2, )\
             .options(sqlalchemy.orm.load_only('status'))\
             .first()
         self.assertIsNotNone(foo2)
@@ -259,10 +263,10 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
 
     def test__loaded_columns_as_list(self):
         # first, names only...
-    
+
         # test all columns
         foo1 = self.request.dbSession.writer.query(model_objects.FooObject)\
-            .filter(model_objects.FooObject.id==1)\
+            .filter(model_objects.FooObject.id == 1, )\
             .first()
         self.assertIsNotNone(foo1)
         self.assertEqual(foo1.id, 1)
@@ -273,14 +277,14 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
 
         # test loadonly
         foo2 = self.request.dbSession.writer.query(model_objects.FooObject)\
-            .filter(model_objects.FooObject.id==2)\
+            .filter(model_objects.FooObject.id == 2, )\
             .options(sqlalchemy.orm.load_only('status'))\
             .first()
         self.assertIsNotNone(foo2)
         self.assertEqual(foo2.id, 2)
         as_list = foo2.loaded_columns_as_list()
         self.assertIsInstance(as_list, list)
-        _expected_column_names = ['id', 'status', ]  #  sqlalchemy upgrades the query to use the fkey "id"
+        _expected_column_names = ['id', 'status', ]  # sqlalchemy upgrades the query to use the fkey "id"
         self.assertSequenceEqual(sorted(as_list), sorted(_expected_column_names))
 
         # then, with values...
@@ -297,3 +301,78 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
         self.assertIsNotNone(foo)
         self.assertEqual(foo.id, 1)
         self.assertEqual(foo._pyramid_request, self.request)
+
+
+class TestDebugtoolbarPanel(TestPyramidAppHarness, unittest.TestCase):
+    def setUp(self):
+        TestPyramidAppHarness.setUp(self)
+        self.config.add_settings({'debugtoolbar.includes': 'pyramid_sqlassist.debugtoolbar'})
+        self.config.include('pyramid_mako')
+        self.config.include('pyramid_debugtoolbar')
+
+    def test_panel_injected(self):
+
+        # create a view
+        def empty_view(request):
+            return Response('<html><head></head><body>OK</body></html>', content_type="text/html")
+        self.config.add_view(empty_view)
+
+        # make the app
+        app = self.config.make_wsgi_app()
+        # make a request
+        req1 = Request.blank('/')
+        req1.remote_addr = '127.0.0.1'
+        resp1 = req1.get_response(app)
+        self.assertEqual(resp1.status_code, 200)
+        self.assertIn("http://localhost/_debug_toolbar/", resp1.text)
+
+        # check the toolbar
+        links = re_toolbar_link.findall(resp1.text)
+        self.assertIsNotNone(links)
+        self.assertIsInstance(links, list)
+        self.assertEqual(len(links), 1)
+        toolbar_link = links[0]
+
+        req2 = Request.blank(toolbar_link)
+        req2.remote_addr = '127.0.0.1'
+        resp2 = req2.get_response(app)
+        self.assertEqual(resp2.status_code, 200)
+
+        self.assertIn('<h3>SqlAssist</h3>', resp2.text)
+        self.assertIn('The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.', resp2.text)
+        self.assertIn('no connections were active on this request.', resp2.text)
+
+    def test_panel_tracks(self):
+
+        # create a view
+        def empty_view(request):
+            foo = request.dbSession.writer.query(model_objects.FooObject).first()  # noqa
+            return Response('<html><head></head><body>OK</body></html>', content_type="text/html")
+        self.config.add_view(empty_view)
+
+        # make the app
+        app = self.config.make_wsgi_app()
+        # make a request
+        req1 = Request.blank('/')
+        req1.remote_addr = '127.0.0.1'
+        resp1 = req1.get_response(app)
+        self.assertEqual(resp1.status_code, 200)
+        self.assertIn("http://localhost/_debug_toolbar/", resp1.text)
+
+        # check the toolbar
+        links = re_toolbar_link.findall(resp1.text)
+        self.assertIsNotNone(links)
+        self.assertIsInstance(links, list)
+        self.assertEqual(len(links), 1)
+        toolbar_link = links[0]
+
+        req2 = Request.blank(toolbar_link)
+        req2.remote_addr = '127.0.0.1'
+        resp2 = req2.get_response(app)
+        self.assertEqual(resp2.status_code, 200)
+
+        self.assertIn('<h3>SqlAssist</h3>', resp2.text)
+        self.assertIn('The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.', resp2.text)
+        self.assertNotIn('no connections were active on this request.', resp2.text)
+        self.assertIn('<h3>Active on this Request</h3>', resp2.text)
+        self.assertIn('''<p>\n\t\tThe SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.\n\t</p>\n\t\n\t\n\t<h3>Active on this Request</h3>\n\t\n\t\t<table class="table table-striped table-condensed">\n\t\t\t<thead>\n\t\t\t\t<tr>\n\t\t\t\t\t<th>connection</th>\n\t\t\t\t\t<th>connection object</th>\n\t\t\t\t</tr>\n\t\t\t</thead>\n\t\t\t<tbody>\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<th>writer</th>\n\t\t\t\t\t\t<td>&lt;sqlalchemy.orm.scoping.scoped_session object at ''', resp2.text)

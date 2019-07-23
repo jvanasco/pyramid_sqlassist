@@ -193,7 +193,7 @@ def reinit_engine(engine_name):
     """
     calls `dispose` on all registered engines, instructing SqlAlchemy to drop the connection pool and begin a new one.
     this is useful as a postfork hook in uwsgi or other frameworks, under which there can be issues with database connections due to forking (threads or processes).
-    
+
     reference:
          Sqlalchemy Documentation: How do I use engines / connections / sessions with Python multiprocessing, or os.fork()?
              http://docs.sqlalchemy.org/en/latest/faq/connections.html#how-do-i-use-engines-connections-sessions-with-python-multiprocessing-or-os-fork
@@ -282,7 +282,7 @@ def initialize_engine(engine_name,
 
     # finally, reflect if needed
     if reflect:
-        raise NotImplemented("this isn't implemented yet. sorry :(")
+        raise NotImplementedError
         # tools.reflect_tables(model_package,
         #                      primary=is_default,
         #                      metadata=_metadata,
@@ -431,7 +431,7 @@ class DbSessionsContainer(object):
     def get_any(self):
         """
         get any of the standard database handles in `any_preferences` (default: reader, writer)
-        
+
         this will first try the properties memoized by Pyramid's `@reify` before invoking other attemps
         """
         # keep a list of what we've tried
@@ -451,20 +451,18 @@ class DbSessionsContainer(object):
         raise ValueError('No session available.')
 
 
-
 def register_request_method(config, request_method_name, dbContainerClass=DbSessionsContainer):
     """
-    ``register_request_method`` invokes Pyramid's ``add_request_method`` and 
+    ``register_request_method`` invokes Pyramid's ``add_request_method`` and
     stashes some information to enable debugtoolbar support.
-    
+
     usage:
 
         def initialize_database(config, settings, is_scoped=None):
             engine_reader = sqlalchemy.engine_from_config(settings, prefix="sqlalchemy_reader.")
             pyramid_sqlassist.initialize_engine('reader', engine_reader)
             pyramid_sqlassist.register_request_method(config, 'dbSession')
-            
-            
+
     args:
         :config object: Pyramid config object
         :request_method_name string: name to be registered as Pyramid request attribute

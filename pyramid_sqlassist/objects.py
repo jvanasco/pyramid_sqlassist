@@ -1,7 +1,6 @@
 import logging
 log = logging.getLogger(__name__)
 
-
 import sqlalchemy
 import sqlalchemy.sql
 from sqlalchemy.orm import class_mapper as sa_class_mapper

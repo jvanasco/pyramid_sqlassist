@@ -1,9 +1,7 @@
 import logging
 log = logging.getLogger(__name__)
 
-
 from pyramid_sqlassist.objects import UtilityObject
-
 
 
 # ==============================================================================

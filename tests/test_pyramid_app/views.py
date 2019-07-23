@@ -48,7 +48,7 @@ class TestsDbsession(Handler):
     def test_callbacks(self):
         if 'finished_callbacks' in self.request.__dict__:
             raise ValueError("`request` has 'finished_callbacks' before one has been registered.")
-        touched  = self.request.dbSession
+        touched  = self.request.dbSession  # noqa
         if 'finished_callbacks' not in self.request.__dict__:
             raise ValueError("`request` does not have 'finished_callbacks', it should")
         return {}
@@ -64,12 +64,12 @@ class TestsDbsessionReader(Handler):
 
     @view_config(route_name="test:dbSession_reader:query", renderer="templates/test_results.mako")
     def test_query(self):
-        foo = self.request.dbSession.reader.query(FooObject).first()
+        foo = self.request.dbSession.reader.query(FooObject).first()  # noqa
         return {}
 
     @view_config(route_name="test:dbSession_reader:query_status", renderer="templates/test_results.mako")
     def test_query_status(self):
-        foo = self.request.dbSession.reader.query(FooObject).first()
+        foo = self.request.dbSession.reader.query(FooObject).first()  # noqa
         if 'reader' not in self.request.dbSession.__dict__:
             raise ValueError("`reader` did not memoize into `self.request.dbSession`")
         if 'writer' in self.request.dbSession.__dict__:
@@ -87,12 +87,12 @@ class TestsDbsessionWriter(Handler):
 
     @view_config(route_name="test:dbSession_writer:query", renderer="templates/test_results.mako")
     def test_query(self):
-        foo = self.request.dbSession.writer.query(FooObject).first()
+        foo = self.request.dbSession.writer.query(FooObject).first()  # noqa
         return {}
 
     @view_config(route_name="test:dbSession_writer:query_status", renderer="templates/test_results.mako")
     def test_query_status(self):
-        foo = self.request.dbSession.writer.query(FooObject).first()
+        foo = self.request.dbSession.writer.query(FooObject).first()  # noqa
         if 'reader' in self.request.dbSession.__dict__:
             raise ValueError("`reader` should not memoize into `self.request.dbSession`")
         if 'writer' not in self.request.dbSession.__dict__:
@@ -112,17 +112,16 @@ class TestsDbsessionMixed(Handler):
 
     @view_config(route_name="test:dbSession_mixed:query", renderer="templates/test_results.mako")
     def test_query(self):
-        foo1 = self.request.dbSession.reader.query(FooObject).first()
-        foo2 = self.request.dbSession.writer.query(FooObject).first()
+        foo1 = self.request.dbSession.reader.query(FooObject).first()  # noqa
+        foo2 = self.request.dbSession.writer.query(FooObject).first()  # noqa
         return {}
 
     @view_config(route_name="test:dbSession_mixed:query_status", renderer="templates/test_results.mako")
     def test_query_status(self):
-        foo1 = self.request.dbSession.reader.query(FooObject).first()
-        foo2 = self.request.dbSession.writer.query(FooObject).first()
+        foo1 = self.request.dbSession.reader.query(FooObject).first()  # noqa
+        foo2 = self.request.dbSession.writer.query(FooObject).first()  # noqa
         if 'reader' not in self.request.dbSession.__dict__:
             raise ValueError("`reader` did not memoize into `self.request.dbSession`")
         if 'writer' not in self.request.dbSession.__dict__:
             raise ValueError("`writer` did not memoize into `self.request.dbSession`")
         return {}
-

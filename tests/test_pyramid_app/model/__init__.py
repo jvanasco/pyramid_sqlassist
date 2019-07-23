@@ -1,3 +1,7 @@
+# stdlib
+import datetime
+
+
 # pypi
 import sqlalchemy
 
@@ -45,7 +49,6 @@ def initialize_database(config, settings, is_scoped=None):
                                         is_scoped=is_scoped,
                                         )
     pyramid_sqlassist.register_request_method(config, 'dbSession')
-    
 
     try:
         model_objects.DeclaredTable.metadata.create_all(engine_reader)
@@ -58,8 +61,6 @@ def initialize_database(config, settings, is_scoped=None):
 
 
 def insert_initial_records(dbSession):
-    import datetime
-    
     _utcnow = datetime.datetime.utcnow()
     _data = ((1, 11, 1, 'AAAAA', 'AAAAA'),
              (2, 12, 2, 'aaaaa', 'aaaaa'),
@@ -76,5 +77,3 @@ def insert_initial_records(dbSession):
         f.status_alt = _datum[4]
         dbSession.add(f)
         dbSession.flush()
-    
-    

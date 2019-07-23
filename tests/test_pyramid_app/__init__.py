@@ -58,10 +58,9 @@ def main(global_config, **settings):
     config.add_route("test:dbSession_mixed:query", "/tests/dbSession_mixed/query")
     config.add_route("test:dbSession_mixed:query_status", "/tests/dbSession_mixed/query_status")
 
-
     # model & views
     config.scan(".views")
-    
+
     model.initialize_database(config, settings)
 
     # request methods!

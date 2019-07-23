@@ -17,10 +17,9 @@ from . import test_pyramid_app
 class _AppBackedTests(object):
 
     def setUp(self):
-        from .test_pyramid_app import main
-        app = main({})
+        app = test_pyramid_app.main({})
         self.testapp = TestApp(app)
-    
+
     def _new_env(self):
         test_env = {
             'testapp': self.testapp,
@@ -53,7 +52,7 @@ class AppTests_Main(_AppBackedTests, unittest.TestCase):
         test_env = self._new_env()
         res = self.testapp.get('/tests/dbSession/callbacks', extra_environ=test_env['extra_environ'])
         self.assertEqual(res.status_code, 200)
-    
+
 
 class AppTests_Reader(_AppBackedTests, unittest.TestCase):
 

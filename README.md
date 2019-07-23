@@ -154,6 +154,29 @@ When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers
 * this namepace is currently unused ; it houses some in-progress code for supporting table reflection
 
 
+# debugtoolbar support
+
+simply add `pyramid_sqlassist.debugtoolbar` to `debugtoolbar.includes` for your application.
+
+For example, this is a line from a `.ini` file
+
+	debugtoolbar.includes = pyramid_sqlassist.debugtoolbar
+
+The sqlassist debugtoolbar panel includes information such as:
+
+* the request attribute the `DbSessionsContainer` has been memoized into
+* the connections which were active for the request
+* the engine status for the active request (initialized, started, ended)
+* the engines configured for the application and available to the request 
+
+The panel is intended to help debug issues with connections - though there should be none. 
+
+
+# TODO:
+
+* debugtoolbar: show id information for the underlying connections and connection pool to help troubleshoot potential forking issues
+
+
 # Notes
 
 * PYTHONOPTIMIZE.  all logging functions are nested under `if __debug__:` statements; they can be compiled away during production
