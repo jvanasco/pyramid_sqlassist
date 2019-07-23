@@ -5,6 +5,8 @@ SqlAssist offers streamlined support handling multiple SqlAlchemy connections u
 
 This package has been working in production environments for several years.
 
+With 0.12.0, there have been some API changes and the introduction of a `pyramid_debugtoolbar` panel
+
 Help / direction is always appreciated.
 
 
@@ -14,7 +16,7 @@ This package uses scoped sessions by default.
 
 `v0.9.1` introduced a capability to use non-scoped sessions.  This appears to work, but hasn't been tested as thoroughly as I'd like.
 
-non-scoped sessions are not integrated with the `transaction` package, as they are incompatible with the zope transaction extension. There is probably a way to get this to work, patches welcome.
+non-scoped sessions are not integrated with the `transaction` package, as they are incompatible with Zope's transaction extension. There is probably a way to get this to work, patches welcome.
 
 
 # Overview
@@ -316,12 +318,12 @@ This can be disabled with an environment variable
 
 ## $$COMMIT$$
 
-if you're using zope & transaction modules :
+if you're using "Zope" & "transaction" modules :
 
 * you need to call `transaction.commit`
 * IMPORTANT remember that `mark_changed` exists!
 
-if you're not using "zope" & "transaction" modules :
+if you're not using "Zope" & "transaction" modules :
 
 * you need to call "dbSession_writer.commit()"
 
@@ -338,7 +340,7 @@ let's say you do this:
 		dbSession_writer_1.add(object1)
 		dbSession_writer_1.commit()
 	except AssertionError , e:
-		print "Should fail because zope wants this"
+		print "Should fail because Zope wants this"
 
 	# add to writer
 	dbSession_writer_2.add(object2)
