@@ -3,7 +3,7 @@
 	* debugtoolbar support
 	* `objects.UtilityObject`: kwarg `start` renamed to `offset`
 	* `objects.UtilityObjec.get__`: methods are classmethods again
-	
+
 
 0.11.0
 	* Python3

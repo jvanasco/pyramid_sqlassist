@@ -5,10 +5,6 @@ import re
 
 from setuptools import setup
 
-here = os.path.abspath(os.path.dirname(__file__))
-README = open(os.path.join(here, "README.md")).read()
-README = README.split("\n\n", 1)[0] + "\n"
-
 # store version in the init.py
 with open(
         os.path.join(
@@ -23,6 +19,7 @@ requires = ['SQLAlchemy>=1.2.0',
             'six',
             ]
 requires_tests = ['pyramid_mako',
+                  'pyramid_debugtoolbar',
                   'webtest',
                   ]
 
@@ -30,7 +27,7 @@ setup(
     name="pyramid_sqlassist",
     version=VERSION,
     description="Efficiently manage multiple SqlAlchemy connections for Pyramid",
-    long_description=README,
+    long_description='Efficiently manage multiple SqlAlchemy connections for Pyramid',
     classifiers=[
         "Intended Audience :: Developers",
         "Framework :: Pyramid",
