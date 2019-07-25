@@ -17,7 +17,10 @@ from . import test_pyramid_app
 class _AppBackedTests(object):
 
     def setUp(self):
-        app = test_pyramid_app.main({})
+        app_test_settings = {'sqlassist.use_zope': False,
+                             'sqlassist.is_scoped': False,
+                             }
+        app = test_pyramid_app.main({}, **app_test_settings)
         self.testapp = TestApp(app)
 
     def _new_env(self):
@@ -106,3 +109,41 @@ class AppTests_Mixed(_AppBackedTests, unittest.TestCase):
         test_env = self._new_env()
         res = self.testapp.get('/tests/dbSession_mixed/query_status', extra_environ=test_env['extra_environ'])
         self.assertEqual(res.status_code, 200)
+
+
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+
+class _AppBackedTests_Transaction(object):
+
+    def setUp(self):
+        app_test_settings = {'sqlassist.use_zope': True,
+                             'sqlassist.is_scoped': True,
+                             }
+        app = test_pyramid_app.main({}, **app_test_settings)
+        self.testapp = TestApp(app)
+
+    def _new_env(self):
+        test_env = {
+            'testapp': self.testapp,
+            'extra_environ': {'wsgi.url_scheme': 'https',
+                              'HTTP_HOST': 'app.example.com',
+                              },
+        }
+        return test_env
+
+
+class AppTestsTransaction_Main(_AppBackedTests_Transaction, AppTests_Main, unittest.TestCase):
+    pass
+
+
+class AppTestsTransaction_Reader(_AppBackedTests_Transaction, AppTests_Reader, unittest.TestCase):
+    pass
+
+
+class AppTestsTransaction_Writer(_AppBackedTests_Transaction, AppTests_Writer, unittest.TestCase):
+    pass
+
+
+class AppTestsTransaction_Mixed(_AppBackedTests_Transaction, AppTests_Mixed, unittest.TestCase):
+    pass

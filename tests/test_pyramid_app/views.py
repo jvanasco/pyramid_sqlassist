@@ -16,6 +16,7 @@ from pyramid.view import view_config
 # pypi
 from pyramid_sqlassist import DbSessionsContainer
 from sqlalchemy.orm.session import Session as SqlalchemySession
+from sqlalchemy.orm.scoping import scoped_session as scoped_session
 
 # local
 from .model.model_objects import FooObject
@@ -58,8 +59,12 @@ class TestsDbsessionReader(Handler):
 
     @view_config(route_name="test:dbSession_reader", renderer="templates/test_results.mako")
     def test_core(self):
-        if not isinstance(self.request.dbSession.reader, SqlalchemySession):
-            raise ValueError("`self.request.dbSession.reader` is not a `SqlalchemySession`")
+        if self.request.registry.settings.get('sqlassist.is_scoped'):
+            if not isinstance(self.request.dbSession.reader, scoped_session):
+                raise ValueError("`self.request.dbSession.reader` is not a `scoped_session`")
+        else:
+            if not isinstance(self.request.dbSession.reader, SqlalchemySession):
+                raise ValueError("`self.request.dbSession.reader` is not a `SqlalchemySession`")
         return {}
 
     @view_config(route_name="test:dbSession_reader:query", renderer="templates/test_results.mako")
@@ -81,8 +86,12 @@ class TestsDbsessionWriter(Handler):
 
     @view_config(route_name="test:dbSession_writer", renderer="templates/test_results.mako")
     def test_core(self):
-        if not isinstance(self.request.dbSession.writer, SqlalchemySession):
-            raise ValueError("`self.request.dbSession.writer` is not a `SqlalchemySession`")
+        if self.request.registry.settings.get('sqlassist.is_scoped'):
+            if not isinstance(self.request.dbSession.writer, scoped_session):
+                raise ValueError("`self.request.dbSession.writer` is not a `scoped_session`")
+        else:
+            if not isinstance(self.request.dbSession.writer, SqlalchemySession):
+                raise ValueError("`self.request.dbSession.writer` is not a `SqlalchemySession`")
         return {}
 
     @view_config(route_name="test:dbSession_writer:query", renderer="templates/test_results.mako")
@@ -104,10 +113,16 @@ class TestsDbsessionMixed(Handler):
 
     @view_config(route_name="test:dbSession_mixed", renderer="templates/test_results.mako")
     def test_core(self):
-        if not isinstance(self.request.dbSession.reader, SqlalchemySession):
-            raise ValueError("`self.request.dbSession.reader` is not a `SqlalchemySession`")
-        if not isinstance(self.request.dbSession.writer, SqlalchemySession):
-            raise ValueError("`self.request.dbSession.writer` is not a `SqlalchemySession`")
+        if self.request.registry.settings.get('sqlassist.is_scoped'):
+            if not isinstance(self.request.dbSession.reader, scoped_session):
+                raise ValueError("`self.request.dbSession.reader` is not a `scoped_session`")
+            if not isinstance(self.request.dbSession.writer, scoped_session):
+                raise ValueError("`self.request.dbSession.writer` is not a `scoped_session`")
+        else:
+            if not isinstance(self.request.dbSession.reader, SqlalchemySession):
+                raise ValueError("`self.request.dbSession.reader` is not a `SqlalchemySession`")
+            if not isinstance(self.request.dbSession.writer, SqlalchemySession):
+                raise ValueError("`self.request.dbSession.writer` is not a `SqlalchemySession`")
         return {}
 
     @view_config(route_name="test:dbSession_mixed:query", renderer="templates/test_results.mako")

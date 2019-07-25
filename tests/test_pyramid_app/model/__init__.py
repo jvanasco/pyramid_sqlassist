@@ -1,6 +1,7 @@
+from __future__ import unicode_literals
+
 # stdlib
 import datetime
-
 
 # pypi
 import sqlalchemy
@@ -13,7 +14,7 @@ from . import model_objects
 # ==============================================================================
 
 
-def initialize_database(config, settings, is_scoped=None):
+def initialize_database(config, settings):
     sqlalchemy_echo = True if (settings.get('sqlalchemy_echo', '').lower() == 'true') else False
 
     # sqlalchemy needs this to be an int.
@@ -25,6 +26,9 @@ def initialize_database(config, settings, is_scoped=None):
         if k in settings:
             settings[k] = int(settings[k])
 
+    use_zope = settings.get('sqlassist.use_zope')
+    is_scoped = settings.get('sqlassist.is_scoped')
+
     engine_reader = sqlalchemy.engine_from_config(settings,
                                                   prefix="sqlalchemy_reader.",
                                                   echo=sqlalchemy_echo,
@@ -33,7 +37,7 @@ def initialize_database(config, settings, is_scoped=None):
                                         engine_reader,
                                         is_default=False,
                                         model_package=model_objects,
-                                        use_zope=False,
+                                        use_zope=use_zope,
                                         is_scoped=is_scoped,
                                         )
 
@@ -45,7 +49,7 @@ def initialize_database(config, settings, is_scoped=None):
                                         engine_writer,
                                         is_default=False,
                                         model_package=model_objects,
-                                        use_zope=False,
+                                        use_zope=use_zope,
                                         is_scoped=is_scoped,
                                         )
     pyramid_sqlassist.register_request_method(config, 'dbSession')

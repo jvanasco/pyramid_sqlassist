@@ -32,11 +32,17 @@ class AttribSafeContextObj(object):
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
-    if not settings:
-        settings = {'mako.directories': '.',
-                    'sqlalchemy_reader.url': 'sqlite://',
-                    'sqlalchemy_writer.url': 'sqlite://',
-                    }
+    _setting_defaults = {'mako.directories': '.',
+                         'sqlalchemy_reader.url': 'sqlite://',
+                         'sqlalchemy_writer.url': 'sqlite://',
+                         'sqlassist.use_zope': False,
+                         'sqlassist.is_scoped': False,
+                         }
+    for (k, v) in _setting_defaults.items():
+        if k not in settings:
+            log.debug('main: initialize `settings["%s"]` with default `%s`', k, v)
+            settings[k] = v
+
     config = Configurator(settings=settings)
 
     # libraries for ease
