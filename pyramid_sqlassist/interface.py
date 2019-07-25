@@ -260,9 +260,7 @@ def initialize_engine(engine_name,
         if ZopeTransactionExtension is None:
             raise ImportError('ZopeTransactionExtension was not imported earlier')
         if 'extension' in sa_sessionmaker_params:
-            raise ValueError('''I raise an error when you call initialize_engine()
-            with `use_zope=True` and an `extension` in sa_sessionmaker_params.
-            Sorry.''')
+            raise ValueError('''`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`''')
         sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
 
     if is_readonly or is_autocommit:

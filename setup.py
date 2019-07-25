@@ -20,6 +20,7 @@ requires = ['SQLAlchemy>=1.2.0',
             ]
 requires_tests = ['pyramid_mako',
                   'pyramid_debugtoolbar',
+                  'pyramid_tm',
                   'transaction',
                   'webtest',
                   'zope.sqlalchemy',

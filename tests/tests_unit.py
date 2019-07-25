@@ -11,6 +11,7 @@ from pyramid import testing
 from pyramid.interfaces import IRequestExtensions
 from pyramid.response import Response
 from pyramid.request import Request
+from pyramid_tm.tests import DummyDataManager
 
 # pypi
 import sqlalchemy
@@ -28,17 +29,20 @@ from .test_pyramid_app.model import model_objects
 re_toolbar_link = re.compile('(?:href="http://localhost)(/_debug_toolbar/[\d]+)"')
 
 
-class TestPyramidAppHarness(object):
+class _TestPyramidAppHarness(object):
+
+    settings = {'mako.directories': '.',
+                'sqlalchemy_reader.url': 'sqlite://',
+                'sqlalchemy_writer.url': 'sqlite://',
+                'sqlassist.use_zope': False,
+                'sqlassist.is_scoped': False,
+                }
 
     def setUp(self):
         self.config = testing.setUp()
-        self.settings = {'mako.directories': '.',
-                         'sqlalchemy_reader.url': 'sqlite://',
-                         'sqlalchemy_writer.url': 'sqlite://',
-                         }
         self.context = testing.DummyResource()
         self.request = testing.DummyRequest()
-
+        
         engine_reader = sqlalchemy.engine_from_config(self.settings,
                                                       prefix="sqlalchemy_reader.",
                                                       )
@@ -46,7 +50,8 @@ class TestPyramidAppHarness(object):
                                             engine_reader,
                                             is_default=False,
                                             model_package=model_objects,
-                                            use_zope=False,
+                                            use_zope=self.settings.get('sqlassist.use_zope'),
+                                            is_scoped=self.settings.get('sqlassist.is_scoped'),
                                             )
 
         engine_writer = sqlalchemy.engine_from_config(self.settings,
@@ -56,7 +61,8 @@ class TestPyramidAppHarness(object):
                                             engine_writer,
                                             is_default=False,
                                             model_package=model_objects,
-                                            use_zope=False,
+                                            use_zope=self.settings.get('sqlassist.use_zope'),
+                                            is_scoped=self.settings.get('sqlassist.is_scoped'),
                                             )
         pyramid_sqlassist.register_request_method(self.config, 'dbSession')
 
@@ -73,7 +79,7 @@ class TestPyramidAppHarness(object):
         testing.tearDown()
 
 
-class TestPyramidSetup(TestPyramidAppHarness, unittest.TestCase):
+class TestPyramidSetup(_TestPyramidAppHarness, unittest.TestCase):
 
     def test_pyramid_setup(self):
         """test configuring the request property worked"""
@@ -81,7 +87,7 @@ class TestPyramidSetup(TestPyramidAppHarness, unittest.TestCase):
         self.assertTrue('dbSession' in exts.descriptors)
 
 
-class TestPyramidRequest(TestPyramidAppHarness, unittest.TestCase):
+class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
 
     def test_initial_state(self):
         """this must be manually copied over for testing"""
@@ -120,10 +126,257 @@ class TestPyramidRequest(TestPyramidAppHarness, unittest.TestCase):
         self.assertIn('finished_callbacks', self.request.__dict__)
 
 
-class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+
+class _TestPyramidAppHarness_Transaction(_TestPyramidAppHarness):
+
+    settings = {'mako.directories': '.',
+                'sqlalchemy_reader.url': 'sqlite://',
+                'sqlalchemy_writer.url': 'sqlite://',
+                'sqlassist.use_zope': True,
+                'sqlassist.is_scoped': True,
+                }
+
+class TestPyramidSetup_Transaction(_TestPyramidAppHarness_Transaction, TestPyramidSetup, unittest.TestCase):
+    pass
+
+class TestPyramidRequest_Transaction(_TestPyramidAppHarness_Transaction, TestPyramidRequest, unittest.TestCase):
+    pass
+
+
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+
+class TestPyramidTm(unittest.TestCase):
 
     def setUp(self):
-        TestPyramidAppHarness.setUp(self)
+        self.config = testing.setUp()  # pyramid_tm.tests.TestIntegration.setUp : `testing.setUp(autocommit=False)``
+        self.context = testing.DummyResource()
+        self.request = testing.DummyRequest()
+
+        settings = {'mako.directories': '.',
+                    'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlalchemy_writer.url': 'sqlite://',
+                    'sqlassist.use_zope': True,
+                    'sqlassist.is_scoped': True,
+                    }
+        
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        pyramid_sqlassist.initialize_engine('reader',
+                                            engine_reader,
+                                            is_default=False,
+                                            model_package=model_objects,
+                                            use_zope=settings.get('sqlassist.use_zope'),
+                                            is_scoped=settings.get('sqlassist.is_scoped'),
+                                            )
+        engine_writer = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_writer.",
+                                                      )
+        pyramid_sqlassist.initialize_engine('writer',
+                                            engine_writer,
+                                            is_default=False,
+                                            model_package=model_objects,
+                                            use_zope=settings.get('sqlassist.use_zope'),
+                                            is_scoped=settings.get('sqlassist.is_scoped'),
+                                            )
+        pyramid_sqlassist.register_request_method(self.config, 'dbSession')
+
+        try:
+            model_objects.DeclaredTable.metadata.create_all(engine_reader)
+        except Exception as exc:
+            print(exc)
+        try:
+            model_objects.DeclaredTable.metadata.create_all(engine_writer)
+        except Exception as exc:
+            print(exc)
+
+    def tearDown(self):
+        testing.tearDown()
+
+    def test_tm__not_enabled(self):
+        dm = DummyDataManager()
+
+        # create a view
+        def empty_view(request):
+            with self.assertRaises(AttributeError) as cm:
+                dm.bind(request.tm)
+            self.assertEqual(cm.exception.args[0], "'Request' object has no attribute 'tm'")
+            return Response('<html><head></head><body>OK</body></html>', content_type="text/html")
+
+        self.config.add_view(empty_view)
+
+        # make the app
+        app = self.config.make_wsgi_app()
+        # make a request
+        req1 = Request.blank('/')
+        req1.remote_addr = '127.0.0.1'
+        resp1 = req1.get_response(app)
+        self.assertEqual(resp1.status_code, 200)
+        self.assertEqual(dm.action, None)
+
+    def test_tm__enabled_valid__commit(self):
+        self.config.include('pyramid_tm')
+
+        dm = DummyDataManager()
+
+        # create a view
+        def empty_view(request):
+            dm.bind(request.tm)
+            foo = request.dbSession.writer.query(model_objects.FooObject).first()  # noqa
+            return Response('<html><head></head><body>OK</body></html>', content_type="text/html")
+        self.config.add_view(empty_view)
+
+        # make the app
+        app = self.config.make_wsgi_app()
+        # make a request
+        req1 = Request.blank('/')
+        req1.remote_addr = '127.0.0.1'
+        resp1 = req1.get_response(app)
+        self.assertEqual(resp1.status_code, 200)
+        self.assertEqual(dm.action, 'commit')
+
+    def test_tm__enabled_valid__abort(self):
+        self.config.include('pyramid_tm')
+
+        dm = DummyDataManager()
+
+        # create a view
+        def empty_view(request):
+            dm.bind(request.tm)
+            foo = request.dbSession.writer.query(model_objects.FooObject).first()  # noqa
+            raise ValueError
+        self.config.add_view(empty_view)
+
+        def exc_view(request):
+            return 'failure'
+        self.config.add_view(exc_view, context=ValueError, renderer='string')
+
+        # make the app
+        app = self.config.make_wsgi_app()
+        # make a request
+        req1 = Request.blank('/')
+        req1.remote_addr = '127.0.0.1'
+        resp1 = req1.get_response(app)
+        self.assertEqual(resp1.body, b'failure')
+        self.assertEqual(dm.action, 'abort')
+
+
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+
+class TestInitializeEngine(unittest.TestCase):
+
+    def test_zope_requires_scope__fail(self):
+        settings = {'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlassist.use_zope': True,
+                    'sqlassist.is_scoped': False,
+                    }
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        with self.assertRaises(ValueError) as cm:
+            pyramid_sqlassist.initialize_engine('reader',
+                                                engine_reader,
+                                                is_default=False,
+                                                model_package=model_objects,
+                                                use_zope=settings.get('sqlassist.use_zope'),
+                                                is_scoped=settings.get('sqlassist.is_scoped'),
+                                                )
+        self.assertEqual(cm.exception.args[0], 'ZopeTransactionExtension requires scoped sessions')
+
+    def test_zope_sessionmaker_params__pass(self):
+        settings = {'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlassist.use_zope': True,
+                    'sqlassist.is_scoped': True,
+                    }
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        pyramid_sqlassist.initialize_engine('reader',
+                                            engine_reader,
+                                            is_default=False,
+                                            model_package=model_objects,
+                                            sa_sessionmaker_params={},
+                                            use_zope=settings.get('sqlassist.use_zope'),
+                                            is_scoped=settings.get('sqlassist.is_scoped'),
+                                            )
+
+    def test_zope_sessionmaker_params__fail(self):
+        settings = {'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlassist.use_zope': True,
+                    'sqlassist.is_scoped': True,
+                    }
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        with self.assertRaises(ValueError) as cm:
+            pyramid_sqlassist.initialize_engine('reader',
+                                                engine_reader,
+                                                is_default=False,
+                                                model_package=model_objects,
+                                                sa_sessionmaker_params={'extension': 'foo', },
+                                                use_zope=settings.get('sqlassist.use_zope'),
+                                                is_scoped=settings.get('sqlassist.is_scoped'),
+                                                )
+        self.assertEqual(cm.exception.args[0], '`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`')
+
+    def test_zope_requires_scope__pass(self):
+        settings = {'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlassist.use_zope': True,
+                    'sqlassist.is_scoped': True,
+                    }
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        pyramid_sqlassist.initialize_engine('reader',
+                                            engine_reader,
+                                            is_default=False,
+                                            model_package=model_objects,
+                                            use_zope=settings.get('sqlassist.use_zope'),
+                                            is_scoped=settings.get('sqlassist.is_scoped'),
+                                            )
+                                                
+    def test_no_zope_is_scoped__pass(self):
+        settings = {'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlassist.use_zope': False,
+                    'sqlassist.is_scoped': True,
+                    }
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        pyramid_sqlassist.initialize_engine('reader',
+                                            engine_reader,
+                                            is_default=False,
+                                            model_package=model_objects,
+                                            use_zope=settings.get('sqlassist.use_zope'),
+                                            is_scoped=settings.get('sqlassist.is_scoped'),
+                                            )
+
+    def test_no_zope_not_scoped__pass(self):
+        settings = {'sqlalchemy_reader.url': 'sqlite://',
+                    'sqlassist.use_zope': False,
+                    'sqlassist.is_scoped': False,
+                    }
+        engine_reader = sqlalchemy.engine_from_config(settings,
+                                                      prefix="sqlalchemy_reader.",
+                                                      )
+        pyramid_sqlassist.initialize_engine('reader',
+                                            engine_reader,
+                                            is_default=False,
+                                            model_package=model_objects,
+                                            use_zope=settings.get('sqlassist.use_zope'),
+                                            is_scoped=settings.get('sqlassist.is_scoped'),
+                                            )
+                                                
+                                                                          
+
+class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
+
+    def setUp(self):
+        _TestPyramidAppHarness.setUp(self)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
         model.insert_initial_records(self.request.dbSession.writer)
 
@@ -304,9 +557,10 @@ class TestModelObjectFunctions(TestPyramidAppHarness, unittest.TestCase):
         self.assertEqual(foo._pyramid_request, self.request)
 
 
-class TestDebugtoolbarPanel(TestPyramidAppHarness, unittest.TestCase):
+class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
+
     def setUp(self):
-        TestPyramidAppHarness.setUp(self)
+        _TestPyramidAppHarness.setUp(self)
         self.config.add_settings({'debugtoolbar.includes': 'pyramid_sqlassist.debugtoolbar'})
         self.config.include('pyramid_mako')
         self.config.include('pyramid_debugtoolbar')
@@ -342,6 +596,7 @@ class TestDebugtoolbarPanel(TestPyramidAppHarness, unittest.TestCase):
         self.assertIn('<h3>SqlAssist</h3>', resp2.text)
         self.assertIn('The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.', resp2.text)
         self.assertIn('no connections were active on this request.', resp2.text)
+        
 
     def test_panel_tracks(self):
 
@@ -376,4 +631,9 @@ class TestDebugtoolbarPanel(TestPyramidAppHarness, unittest.TestCase):
         self.assertIn('The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.', resp2.text)
         self.assertNotIn('no connections were active on this request.', resp2.text)
         self.assertIn('<h3>Active on this Request</h3>', resp2.text)
-        self.assertIn('''<p>\n\t\tThe SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.\n\t</p>\n\t\n\t\n\t<h3>Active on this Request</h3>\n\t\n\t\t<table class="table table-striped table-condensed">\n\t\t\t<thead>\n\t\t\t\t<tr>\n\t\t\t\t\t<th>connection</th>\n\t\t\t\t\t<th>connection object</th>\n\t\t\t\t</tr>\n\t\t\t</thead>\n\t\t\t<tbody>\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<th>writer</th>\n\t\t\t\t\t\t<td>&lt;sqlalchemy.orm.scoping.scoped_session object at ''', resp2.text)
+        # the object type could be `sqlalchemy.orm.scroping.scoped_session` or `sqlalchemy.orm.session.Session`
+        self.assertIn('''<p>\n\t\tThe SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.\n\t</p>\n\t\n\t\n\t<h3>Active on this Request</h3>\n\t\n\t\t<table class="table table-striped table-condensed">\n\t\t\t<thead>\n\t\t\t\t<tr>\n\t\t\t\t\t<th>connection</th>\n\t\t\t\t\t<th>connection object</th>\n\t\t\t\t</tr>\n\t\t\t</thead>\n\t\t\t<tbody>\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<th>writer</th>\n\t\t\t\t\t\t<td>&lt;sqlalchemy.orm.''', resp2.text)
+
+                      
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+                                                                                                

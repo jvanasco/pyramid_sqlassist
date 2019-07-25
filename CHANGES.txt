@@ -1,5 +1,6 @@
 0.12.1
 	* testing changes
+	* some changes on text of value errors in `initialize_engine`
 
 0.12.0
 	* integrated tests and test application
