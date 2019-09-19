@@ -1,7 +1,8 @@
-0.12.1
+0.12.1dev
 	# no release needed as this is just testing/internal changes
 	* testing changes
-	* some changes on text of value errors in `initialize_engine`
+	* some changes on text of value errors in `initialize_engine
+	* black
 
 0.12.0
 	* integrated tests and test application

@@ -1,4 +1,5 @@
 import logging
+
 log = logging.getLogger(__name__)
 
 # local imports
@@ -8,4 +9,4 @@ from .objects import *
 # ==============================================================================
 
 
-__VERSION__ = '0.12.1'
+__VERSION__ = "0.12.1dev"

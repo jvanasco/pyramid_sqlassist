@@ -1,4 +1,5 @@
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -19,7 +20,9 @@ from pyramid.decorator import reify
 # transaction support
 try:
     # export SQLASSIST_DISABLE_TRANSACTION=1
-    SQLASSIST_DISABLE_TRANSACTION = int(os.environ.get('SQLASSIST_DISABLE_TRANSACTION', 0))
+    SQLASSIST_DISABLE_TRANSACTION = int(
+        os.environ.get("SQLASSIST_DISABLE_TRANSACTION", 0)
+    )
     if SQLASSIST_DISABLE_TRANSACTION:
         raise ImportError("import disabled")
     import transaction
@@ -37,9 +40,7 @@ except ImportError:
 
 
 # define an engine registry (GLOBAL)
-_ENGINE_REGISTRY = {'!default': None,
-                    'engines': {},
-                    }
+_ENGINE_REGISTRY = {"!default": None, "engines": {}}
 
 
 # via pyramid
@@ -47,11 +48,11 @@ _ENGINE_REGISTRY = {'!default': None,
 # providers will autogenerate vastly different names making migrations more
 # difficult. See: http://alembic.zzzcomputing.com/en/latest/naming.html
 NAMING_CONVENTION = {
-    "ix": 'ix_%(column_0_label)s',
+    "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
     "ck": "ck_%(table_name)s_%(constraint_name)s",
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s"
+    "pk": "pk_%(table_name)s",
 }
 
 
@@ -68,10 +69,8 @@ class STATUS_CODES(object):
     START = 1
     END = 2
 
-    _readable = {INIT: 'INIT',
-                 START: 'START',
-                 END: 'END',
-                 }
+    _readable = {INIT: "INIT", START: "START", END: "END"}
+
 
 # ------------------------------------------------------------------------------
 
@@ -80,6 +79,7 @@ class EngineStatusTracker(object):
     """
     An instance of this class is stashed on each request at init by the `DbSessionsContainer`
     """
+
     engines = None
 
     def __init__(self):
@@ -107,13 +107,13 @@ class EngineWrapper(object):
         self.engine_name = engine_name
         self.sa_engine = sa_engine
 
-    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params, ):
+    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params):
         """
         `is_scoped` = boolean
         """
         if __debug__:
             log.debug("EngineWrapper.init_sessionmaker()")
-        sa_sessionmaker_params['bind'] = self.sa_engine
+        sa_sessionmaker_params["bind"] = self.sa_engine
         sa_sessionmaker = sqlalchemy_orm.sessionmaker(**sa_sessionmaker_params)
         self.sa_sessionmaker = sa_sessionmaker
         if is_scoped:
@@ -143,24 +143,37 @@ class EngineWrapper(object):
         """
         if __debug__:
             log.debug("EngineWrapper.request_start() | request = %s", id(request))
-            log.debug("EngineWrapper.request_start() | %s | %s", self.engine_name, self._session_repr)
+            log.debug(
+                "EngineWrapper.request_start() | %s | %s",
+                self.engine_name,
+                self._session_repr,
+            )
 
-        if dbSessionsContainer._engine_status_tracker.engines[self.engine_name] == STATUS_CODES.INIT:
+        if (
+            dbSessionsContainer._engine_status_tracker.engines[self.engine_name]
+            == STATUS_CODES.INIT
+        ):
             # reinit the session, this only requires invoking it like a function to modify in-place
-            dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = STATUS_CODES.START
+            dbSessionsContainer._engine_status_tracker.engines[
+                self.engine_name
+            ] = STATUS_CODES.START
             if self.is_scoped:
                 self.sa_session_scoped()
-                self.sa_session_scoped.info['request'] = request
+                self.sa_session_scoped.info["request"] = request
                 self.sa_session_scoped.rollback()
             else:
                 self.sa_session = self.sa_sessionmaker()
-                self.sa_session.info['request'] = request
+                self.sa_session.info["request"] = request
                 self.sa_session.rollback()
                 # scoped sessions have a `session_factory`, but normal ones do not
                 self.sa_session.session_factory = self.sa_sessionmaker
         else:
             if __debug__:
-                log.debug("EngineWrapper.request_start() | %s | %s || DUPLICATE", self.engine_name, self._session_repr)
+                log.debug(
+                    "EngineWrapper.request_start() | %s | %s || DUPLICATE",
+                    self.engine_name,
+                    self._session_repr,
+                )
 
     def request_end(self, request, dbSessionsContainer=None):
         """
@@ -168,15 +181,24 @@ class EngineWrapper(object):
         """
         if __debug__:
             log.debug("EngineWrapper.request_end() | request = %s", id(request))
-            log.debug("EngineWrapper.request_end() | %s | %s", self.engine_name, self._session_repr)
+            log.debug(
+                "EngineWrapper.request_end() | %s | %s",
+                self.engine_name,
+                self._session_repr,
+            )
 
         # optional tracking
         if dbSessionsContainer is not None:
             if self.engine_name in dbSessionsContainer._engine_status_tracker.engines:
-                if dbSessionsContainer._engine_status_tracker.engines[self.engine_name] == STATUS_CODES.INIT:
+                if (
+                    dbSessionsContainer._engine_status_tracker.engines[self.engine_name]
+                    == STATUS_CODES.INIT
+                ):
                     # we only initialized the containiner. no need to call the sqlalchemy internals
                     return
-                dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = STATUS_CODES.END
+                dbSessionsContainer._engine_status_tracker.engines[
+                    self.engine_name
+                ] = STATUS_CODES.END
 
         # remove no matter what
         if self.is_scoped:
@@ -198,24 +220,25 @@ def reinit_engine(engine_name):
          Sqlalchemy Documentation: How do I use engines / connections / sessions with Python multiprocessing, or os.fork()?
              http://docs.sqlalchemy.org/en/latest/faq/connections.html#how-do-i-use-engines-connections-sessions-with-python-multiprocessing-or-os-fork
     """
-    if engine_name not in _ENGINE_REGISTRY['engines']:
+    if engine_name not in _ENGINE_REGISTRY["engines"]:
         return
-    wrapped_engine = _ENGINE_REGISTRY['engines'][engine_name]
+    wrapped_engine = _ENGINE_REGISTRY["engines"][engine_name]
     wrapped_engine.sa_engine.dispose()
 
 
-def initialize_engine(engine_name,
-                      sa_engine,
-                      is_default=False,
-                      use_zope=False,
-                      sa_sessionmaker_params=None,
-                      is_readonly=False,
-                      is_scoped=True,
-                      model_package=None,
-                      reflect=False,
-                      is_configure_mappers=True,
-                      is_autocommit=None,
-                      ):
+def initialize_engine(
+    engine_name,
+    sa_engine,
+    is_default=False,
+    use_zope=False,
+    sa_sessionmaker_params=None,
+    is_readonly=False,
+    is_scoped=True,
+    model_package=None,
+    reflect=False,
+    is_configure_mappers=True,
+    is_autocommit=None,
+):
     """
     Wraps each engine in an `EngineWrapper`
     Registers each engine into the `_ENGINE_REGISTRY`
@@ -247,9 +270,7 @@ def initialize_engine(engine_name,
     # not sure this is needed with zope
     if sa_sessionmaker_params is None:
         sa_sessionmaker_params = {}
-    _sa_sessionmaker_params__defaults = {'autoflush': True,
-                                         'autocommit': False,
-                                         }
+    _sa_sessionmaker_params__defaults = {"autoflush": True, "autocommit": False}
     for i in _sa_sessionmaker_params__defaults.keys():
         if i not in sa_sessionmaker_params:
             sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
@@ -258,22 +279,24 @@ def initialize_engine(engine_name,
         if not is_scoped:
             raise ValueError("ZopeTransactionExtension requires scoped sessions")
         if ZopeTransactionExtension is None:
-            raise ImportError('ZopeTransactionExtension was not imported earlier')
-        if 'extension' in sa_sessionmaker_params:
-            raise ValueError('''`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`''')
-        sa_sessionmaker_params['extension'] = ZopeTransactionExtension()
+            raise ImportError("ZopeTransactionExtension was not imported earlier")
+        if "extension" in sa_sessionmaker_params:
+            raise ValueError(
+                """`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`"""
+            )
+        sa_sessionmaker_params["extension"] = ZopeTransactionExtension()
 
     if is_readonly or is_autocommit:
-        sa_sessionmaker_params['autocommit'] = True
-        sa_sessionmaker_params['expire_on_commit'] = False
+        sa_sessionmaker_params["autocommit"] = True
+        sa_sessionmaker_params["expire_on_commit"] = False
 
     # this initializes the session
-    wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params, )
+    wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params)
 
     # stash the wrapper
-    _ENGINE_REGISTRY['engines'][engine_name] = wrapped_engine
+    _ENGINE_REGISTRY["engines"][engine_name] = wrapped_engine
     if is_default:
-        _ENGINE_REGISTRY['!default'] = engine_name
+        _ENGINE_REGISTRY["!default"] = engine_name
 
     if is_configure_mappers:
         sqlalchemy.orm.configure_mappers()
@@ -289,12 +312,12 @@ def initialize_engine(engine_name,
         #                      )
 
 
-def get_wrapped_engine(name='!default'):
+def get_wrapped_engine(name="!default"):
     """retrieves an engine from the registry"""
     try:
-        if name == '!default':
-            name = _ENGINE_REGISTRY['!default']
-        return _ENGINE_REGISTRY['engines'][name]
+        if name == "!default":
+            name = _ENGINE_REGISTRY["!default"]
+        return _ENGINE_REGISTRY["engines"][name]
     except KeyError:
         raise RuntimeError("No engine '%s' was configured" % name)
 
@@ -312,17 +335,19 @@ def request_cleanup(request, dbSessionsContainer=None):
     """
     if __debug__:
         log.debug("request_cleanup()")
-    for engine_name in _ENGINE_REGISTRY['engines'].keys():
+    for engine_name in _ENGINE_REGISTRY["engines"].keys():
         _engine = get_wrapped_engine(engine_name)
         _engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
 
 
 def _ensure_cleanup(request, dbSessionsContainer=None):
     """ensures we have a cleanup action"""
-    if (request_cleanup not in request.finished_callbacks):
+    if request_cleanup not in request.finished_callbacks:
         if dbSessionsContainer is not None:
+
             def f_cleanup(req):
                 request_cleanup(req, dbSessionsContainer=dbSessionsContainer)
+
             request.add_finished_callback(f_cleanup)
         else:
             request.add_finished_callback(request_cleanup)
@@ -355,13 +380,14 @@ class DbSessionsContainer(object):
         when setting up an object, utilize dbSession.get_reader and memoize the reader connection
 
     """
+
     _engine_status_tracker = None
 
     def __init__(self, request):
         self._request = request
         # build a tracker
         _engine_status_tracker = EngineStatusTracker()
-        for engine_name in _ENGINE_REGISTRY['engines'].keys():
+        for engine_name in _ENGINE_REGISTRY["engines"].keys():
             _engine_status_tracker.engines[engine_name] = STATUS_CODES.INIT
         self._engine_status_tracker = _engine_status_tracker
         # register our cleanup
@@ -416,7 +442,7 @@ class DbSessionsContainer(object):
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     # logger is not used as a default preference
-    any_preferences = ['reader', 'writer', ]
+    any_preferences = ["reader", "writer"]
 
     @property
     def any(self):
@@ -446,10 +472,12 @@ class DbSessionsContainer(object):
             if _engine_name not in _tried:
                 return getattr(self, _engine_name)
 
-        raise ValueError('No session available.')
+        raise ValueError("No session available.")
 
 
-def register_request_method(config, request_method_name, dbContainerClass=DbSessionsContainer):
+def register_request_method(
+    config, request_method_name, dbContainerClass=DbSessionsContainer
+):
     """
     ``register_request_method`` invokes Pyramid's ``add_request_method`` and
     stashes some information to enable debugtoolbar support.
@@ -466,30 +494,27 @@ def register_request_method(config, request_method_name, dbContainerClass=DbSess
         :request_method_name string: name to be registered as Pyramid request attribute
         :dbContainerClass class: class to be registered for Pyramid request attribute. default `DbSessionsContainer`
     """
-    config.registry.pyramid_sqlassist = {'request_method_name': request_method_name,
-                                         }
-    config.add_request_method(dbContainerClass,
-                              request_method_name,
-                              reify=True,
-                              )
+    config.registry.pyramid_sqlassist = {"request_method_name": request_method_name}
+    config.add_request_method(dbContainerClass, request_method_name, reify=True)
 
 
 # ==============================================================================
 
-__all__ = ('SQLASSIST_DISABLE_TRANSACTION',
-           '_ENGINE_REGISTRY',
-           'NAMING_CONVENTION',
-           '_metadata',
-           'DeclaredTable',
-           'STATUS_CODES',
-           'EngineStatusTracker',
-           'EngineWrapper',
-           'reinit_engine',
-           'initialize_engine',
-           'get_wrapped_engine',
-           'get_session',
-           'request_cleanup',
-           '_ensure_cleanup',
-           'DbSessionsContainer',
-           'register_request_method'
-           )
+__all__ = (
+    "SQLASSIST_DISABLE_TRANSACTION",
+    "_ENGINE_REGISTRY",
+    "NAMING_CONVENTION",
+    "_metadata",
+    "DeclaredTable",
+    "STATUS_CODES",
+    "EngineStatusTracker",
+    "EngineWrapper",
+    "reinit_engine",
+    "initialize_engine",
+    "get_wrapped_engine",
+    "get_session",
+    "request_cleanup",
+    "_ensure_cleanup",
+    "DbSessionsContainer",
+    "register_request_method",
+)

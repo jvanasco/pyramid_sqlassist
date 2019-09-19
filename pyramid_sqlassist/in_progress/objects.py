@@ -1,4 +1,5 @@
 import logging
+
 log = logging.getLogger(__name__)
 
 from pyramid_sqlassist.objects import UtilityObject
@@ -17,6 +18,7 @@ class ReflectedTable(UtilityObject):
           class Useraccount(ReflectedTable):
               __tablename__ = "useraccount"
     """
+
     __tablename__ = None
     __primarykey__ = None
     __sa_stash__ = {}
@@ -25,5 +27,4 @@ class ReflectedTable(UtilityObject):
 # ==============================================================================
 
 
-__all__ = ('ReflectedTable',
-           )
+__all__ = ("ReflectedTable",)

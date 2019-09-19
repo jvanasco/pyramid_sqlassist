@@ -1,4 +1,5 @@
 import logging
+
 log = logging.getLogger(__name__)
 
 import sqlalchemy
@@ -16,6 +17,7 @@ func_lower = sqlalchemy.sql.func.lower
 class CoreObject(object):
     """Core Database Object class/Mixin
     """
+
     __table_pkey__ = None
 
 
@@ -30,10 +32,10 @@ class UtilityObject(CoreObject):
     """
 
     @classmethod
-    def get__by__id(cls, dbSession, id, id_column='id'):
+    def get__by__id(cls, dbSession, id, id_column="id"):
         """classmethod. gets an item by an id column named 'id'.  id column can be overriden"""
         # cls = self.__class__
-        if not hasattr(cls, id_column) and hasattr(cls, '__table_pkey__'):
+        if not hasattr(cls, id_column) and hasattr(cls, "__table_pkey__"):
             id_column = cls.__table_pkey__
         id_col = getattr(cls, id_column)
         if isinstance(id, (list, tuple)):
@@ -43,21 +45,26 @@ class UtilityObject(CoreObject):
             return dbSession.query(cls).filter_by(**id_dict).first()
 
     @classmethod
-    def get__by__column__lower(cls, dbSession, column_name, search, allow_many=False, offset=0, limit=None):
+    def get__by__column__lower(
+        cls, dbSession, column_name, search, allow_many=False, offset=0, limit=None
+    ):
         """classmethod. gets items from the database based on a lowercase version of the column.
         useful for situations where you have a function index on a table
         (such as indexing on the lower version of an email addresses)"""
         # cls = self.__class__
-        items = dbSession.query(cls)\
-            .filter(func_lower(getattr(cls, column_name)) == search.lower(),
-                    )\
-            .offset(offset)\
-            .limit(limit)\
+        items = (
+            dbSession.query(cls)
+            .filter(func_lower(getattr(cls, column_name)) == search.lower())
+            .offset(offset)
+            .limit(limit)
             .all()
+        )
         if items:
             if not allow_many:
                 if len(items) > 1:
-                    raise ValueError("get__by__column__lower should return 1 and only 1 item")
+                    raise ValueError(
+                        "get__by__column__lower should return 1 and only 1 item"
+                    )
                 elif len(items) == 1:
                     return items[0]
             else:
@@ -65,21 +72,26 @@ class UtilityObject(CoreObject):
         return None
 
     @classmethod
-    def get__by__column__similar(cls, dbSession, column_name, seed, prefix_only=True, offset=0, limit=None):
+    def get__by__column__similar(
+        cls, dbSession, column_name, seed, prefix_only=True, offset=0, limit=None
+    ):
         """classmethod. searches for a name column entry with the submitted seed prefix"""
         # cls = self.__class__
         query = dbSession.query(cls)
         if prefix_only:
-            query = query.filter(func_lower(getattr(cls, column_name)).startswith(seed.lower()),
-                                 )
+            query = query.filter(
+                func_lower(getattr(cls, column_name)).startswith(seed.lower())
+            )
         else:
-            query = query.filter(func_lower(getattr(cls, column_name)).contains(seed.lower()),
-                                 )
-        results = query\
-            .order_by(getattr(cls, column_name).asc())\
-            .offset(offset)\
-            .limit(limit)\
+            query = query.filter(
+                func_lower(getattr(cls, column_name)).contains(seed.lower())
+            )
+        results = (
+            query.order_by(getattr(cls, column_name).asc())
+            .offset(offset)
+            .limit(limit)
             .all()
+        )
         return results
 
     @classmethod
@@ -88,34 +100,48 @@ class UtilityObject(CoreObject):
         # cls = self.__class__
         item = dbSession.query(cls).filter(getattr(cls, column_name) == seed).first()
         if not item:
-            item = dbSession.query(cls).filter(getattr(cls, column_name).ilike(seed)).first()
+            item = (
+                dbSession.query(cls)
+                .filter(getattr(cls, column_name).ilike(seed))
+                .first()
+            )
         return item
 
     @classmethod
-    def get__range(cls, dbSession, offset=0, limit=None, sort_direction='asc', order_col=None, order_case_sensitive=True, filters=[], debug_query=False):
+    def get__range(
+        cls,
+        dbSession,
+        offset=0,
+        limit=None,
+        sort_direction="asc",
+        order_col=None,
+        order_case_sensitive=True,
+        filters=[],
+        debug_query=False,
+    ):
         """classmethod. gets a range of items"""
         # cls = self.__class__
         if not order_col:
-            order_col = 'id'
+            order_col = "id"
         query = dbSession.query(cls)
         for filter in filters:
             query = query.filter(filter)
-        for col in order_col.split(','):
+        for col in order_col.split(","):
             # declared columns do not have cls.__class__.c
             # reflected columns did in earlier sqlalchemy
             col = getattr(cls, col)
-            if sort_direction == 'asc':
+            if sort_direction == "asc":
                 if order_case_sensitive:
                     query = query.order_by(col.asc())
                 else:
                     query = query.order_by(func_lower(col).asc())
-            elif sort_direction == 'desc':
+            elif sort_direction == "desc":
                 if order_case_sensitive:
                     query = query.order_by(col.desc())
                 else:
                     query = query.order_by(func_lower(col).desc())
             else:
-                raise ValueError('invalid sort direction')
+                raise ValueError("invalid sort direction")
         query = query.offset(offset).limit(limit)
         results = query.all()
         if __debug__ and debug_query:
@@ -128,10 +154,10 @@ class UtilityObject(CoreObject):
         """
         Beware- this function will trigger a load of attributes if they have not been loaded yet.
         """
-        return dict((col.name, getattr(self, col.name))
-                    for col
-                    in sa_class_mapper(self.__class__).mapped_table.c
-                    )
+        return dict(
+            (col.name, getattr(self, col.name))
+            for col in sa_class_mapper(self.__class__).mapped_table.c
+        )
 
     def loaded_columns_as_dict(self):
         """
@@ -140,10 +166,11 @@ class UtilityObject(CoreObject):
         See Also: ``loaded_columns_as_list``
         """
         _dict = self.__dict__
-        return {col.name: _dict[col.name]
-                for col in sa_class_mapper(self.__class__).mapped_table.c
-                if col.name in _dict
-                }
+        return {
+            col.name: _dict[col.name]
+            for col in sa_class_mapper(self.__class__).mapped_table.c
+            if col.name in _dict
+        }
 
     def loaded_columns_as_list(self, with_values=False):
         """
@@ -155,14 +182,16 @@ class UtilityObject(CoreObject):
         """
         _dict = self.__dict__
         if with_values:
-            return [(col.name, _dict[col.name], )
-                    for col in sa_class_mapper(self.__class__).mapped_table.c
-                    if col.name in _dict
-                    ]
-        return [col.name
+            return [
+                (col.name, _dict[col.name])
                 for col in sa_class_mapper(self.__class__).mapped_table.c
                 if col.name in _dict
-                ]
+            ]
+        return [
+            col.name
+            for col in sa_class_mapper(self.__class__).mapped_table.c
+            if col.name in _dict
+        ]
 
     @property
     def _pyramid_request(self):
@@ -171,14 +200,11 @@ class UtilityObject(CoreObject):
         this should not be memoized, as an object can be merged across sessions
         """
         session = object_session(self)
-        request = session.info['request']
+        request = session.info["request"]
         return request
 
 
 # ==============================================================================
 
 
-__all__ = ('func_lower',
-           'CoreObject',
-           'UtilityObject',
-           )
+__all__ = ("func_lower", "CoreObject", "UtilityObject")
