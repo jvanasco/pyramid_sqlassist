@@ -385,6 +385,7 @@ class DbSessionsContainer(object):
 
     def __init__(self, request):
         self._request = request
+
         # build a tracker
         _engine_status_tracker = EngineStatusTracker()
         for engine_name in _ENGINE_REGISTRY["engines"].keys():

@@ -23,17 +23,17 @@ def reflect_tables(
 ):
     """this reflects tables via sqlalchemy.
 
-        THIS DOES NOT WORK YET
+    THIS DOES NOT WORK YET
 
-        recursively goes through the application's model package looking for classes that inherit from ReflectedTable
+    recursively goes through the application's model package looking for classes that inherit from ReflectedTable
 
-        `model_package` the package you want to reflect.  pass in a package, not a string
+    `model_package` the package you want to reflect.  pass in a package, not a string
 
-        Good:
-            reflect_tables(myapp.models, is_primary=True)
+    Good:
+        reflect_tables(myapp.models, is_primary=True)
 
-        Bad - this won't work at all:
-            reflect_tables('myapp.models', is_primary=True)
+    Bad - this won't work at all:
+        reflect_tables('myapp.models', is_primary=True)
     """
     if __debug__:
         log.debug("reflect_tables(%s)", model_package)

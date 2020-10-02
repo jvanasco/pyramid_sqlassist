@@ -34,8 +34,7 @@ class AttribSafeContextObj(object):
 
 
 def main(global_config, **settings):
-    """ This function returns a Pyramid WSGI application.
-    """
+    """This function returns a Pyramid WSGI application."""
     _setting_defaults = {
         "mako.directories": ".",
         "sqlalchemy_reader.url": "sqlite://",

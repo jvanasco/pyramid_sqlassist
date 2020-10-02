@@ -15,8 +15,7 @@ func_lower = sqlalchemy.sql.func.lower
 
 
 class CoreObject(object):
-    """Core Database Object class/Mixin
-    """
+    """Core Database Object class/Mixin"""
 
     __table_pkey__ = None
 
