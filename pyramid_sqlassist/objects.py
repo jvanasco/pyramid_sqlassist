@@ -155,7 +155,7 @@ class UtilityObject(CoreObject):
         """
         return dict(
             (col.name, getattr(self, col.name))
-            for col in sa_class_mapper(self.__class__).mapped_table.c
+            for col in sa_class_mapper(self.__class__).persist_selectable.c
         )
 
     def loaded_columns_as_dict(self):
@@ -167,7 +167,7 @@ class UtilityObject(CoreObject):
         _dict = self.__dict__
         return {
             col.name: _dict[col.name]
-            for col in sa_class_mapper(self.__class__).mapped_table.c
+            for col in sa_class_mapper(self.__class__).persist_selectable.c
             if col.name in _dict
         }
 
@@ -183,12 +183,12 @@ class UtilityObject(CoreObject):
         if with_values:
             return [
                 (col.name, _dict[col.name])
-                for col in sa_class_mapper(self.__class__).mapped_table.c
+                for col in sa_class_mapper(self.__class__).persist_selectable.c
                 if col.name in _dict
             ]
         return [
             col.name
-            for col in sa_class_mapper(self.__class__).mapped_table.c
+            for col in sa_class_mapper(self.__class__).persist_selectable.c
             if col.name in _dict
         ]
 

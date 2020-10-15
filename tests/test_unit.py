@@ -18,15 +18,15 @@ import sqlalchemy
 
 # local
 import pyramid_sqlassist
-from .test_pyramid_app import model
-from .test_pyramid_app.model import model_objects
+from .pyramid_testapp import model
+from .pyramid_testapp.model import model_objects
 
 
 # ==============================================================================
 
 
 # used to ensure the toolbar link is injected into requests
-re_toolbar_link = re.compile('(?:href="http://localhost)(/_debug_toolbar/[\d]+)"')
+re_toolbar_link = re.compile(r'(?:href="http://localhost)(/_debug_toolbar/[\d]+)"')
 
 
 class _TestPyramidAppHarness(object):
@@ -336,7 +336,7 @@ class TestInitializeEngine(unittest.TestCase):
                 is_scoped=settings.get("sqlassist.is_scoped"),
             )
         self.assertEqual(
-            cm.exception.args[0], "ZopeTransactionExtension requires scoped sessions"
+            cm.exception.args[0], "`zope.sqlalchemy` requires scoped sessions"
         )
 
     def test_zope_sessionmaker_params__pass(self):

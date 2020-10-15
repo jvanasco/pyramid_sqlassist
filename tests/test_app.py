@@ -8,7 +8,7 @@ import unittest
 from webtest import TestApp
 
 # local
-from . import test_pyramid_app
+from . import pyramid_testapp
 
 
 # ==============================================================================
@@ -17,7 +17,7 @@ from . import test_pyramid_app
 class _AppBackedTests(object):
     def setUp(self):
         app_test_settings = {"sqlassist.use_zope": False, "sqlassist.is_scoped": False}
-        app = test_pyramid_app.main({}, **app_test_settings)
+        app = pyramid_testapp.main({}, **app_test_settings)
         self.testapp = TestApp(app)
 
     def _new_env(self):
@@ -33,7 +33,7 @@ class _AppBackedTests(object):
 
 class AppTests_Main(_AppBackedTests, unittest.TestCase):
     """
-    this suite spins up an instance of the Pyramid test app (`test_pyramid_app`)
+    this suite spins up an instance of the Pyramid test app (`pyramid_testapp`)
     """
 
     def test_splash(self):
@@ -137,7 +137,7 @@ class AppTests_Mixed(_AppBackedTests, unittest.TestCase):
 class _AppBackedTests_Transaction(object):
     def setUp(self):
         app_test_settings = {"sqlassist.use_zope": True, "sqlassist.is_scoped": True}
-        app = test_pyramid_app.main({}, **app_test_settings)
+        app = pyramid_testapp.main({}, **app_test_settings)
         self.testapp = TestApp(app)
 
     def _new_env(self):

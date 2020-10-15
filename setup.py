@@ -9,17 +9,23 @@ from setuptools import setup
 with open(
     os.path.join(os.path.dirname(__file__), "pyramid_sqlassist", "__init__.py")
 ) as v_file:
-    VERSION = re.compile(r".*__VERSION__ = '(.*?)'", re.S).match(v_file.read()).group(1)
+    VERSION = re.compile(r'.*__VERSION__ = "(.*?)"', re.S).match(v_file.read()).group(1)
 
-requires = ["SQLAlchemy>=1.2.0", "pyramid", "six"]
-requires_tests = [
+requires = [
+    "SQLAlchemy>=1.3.0",
+    "pyramid",
+    "six",
+]
+tests_require = [
+    "pytest",
     "pyramid_mako",
     "pyramid_debugtoolbar",
     "pyramid_tm",
     "transaction",
     "webtest",
-    "zope.sqlalchemy",
+    "zope.sqlalchemy>=1.2",
 ]
+testing_extras = tests_require + []
 
 setup(
     name="pyramid_sqlassist",
@@ -41,6 +47,9 @@ setup(
     license="MIT",
     zip_safe=False,
     install_requires=requires,
-    tests_require=requires + requires_tests,
+    tests_require=tests_require,
+    extras_require={
+        "testing": testing_extras,
+    },
     test_suite="tests",
 )

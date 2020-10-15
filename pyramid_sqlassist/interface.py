@@ -24,12 +24,12 @@ try:
         os.environ.get("SQLASSIST_DISABLE_TRANSACTION", 0)
     )
     if SQLASSIST_DISABLE_TRANSACTION:
-        raise ImportError("import disabled")
+        raise ImportError("pyramid_sqlassist: transaction imports disabled")
     import transaction
-    from zope.sqlalchemy import ZopeTransactionExtension
-except ImportError:
-    ZopeTransactionExtension = None
+    from zope.sqlalchemy import register as zope_register
+except ImportError as exc:
     transaction = None
+    zope_register = None
 
 
 # # local imports
@@ -107,7 +107,7 @@ class EngineWrapper(object):
         self.engine_name = engine_name
         self.sa_engine = sa_engine
 
-    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params):
+    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params, use_zope=None):
         """
         `is_scoped` = boolean
         """
@@ -119,7 +119,11 @@ class EngineWrapper(object):
         if is_scoped:
             self.is_scoped = True
             self.sa_session_scoped = sqlalchemy_orm.scoped_session(sa_sessionmaker)
+            if use_zope:
+                zope_register(self.sa_session_scoped)
         else:
+            if use_zope:
+                raise ValueError("`use_zope=True` requires scoped sessions")
             self.is_scoped = False
             self.sa_session = sa_sessionmaker()
 
@@ -246,7 +250,7 @@ def initialize_engine(
     :params:
 
     :is_default: bool. default `False`.  used to declare which is the default engine.
-    :use_zope: bool. default `False`.  enable to use the `ZopeTransactionExtension`.
+    :use_zope: bool. default `False`.  enable to use `zope.sqlalchemy`.
     :sa_sessionmaker_params: dict. passed to sqlalchemy's sessionmaker.
     :is_readonly: bool. default `False`.  if set to true, will optimize engine for readonly access
         `autocommit`=True
@@ -277,21 +281,22 @@ def initialize_engine(
 
     if use_zope:
         if not is_scoped:
-            raise ValueError("ZopeTransactionExtension requires scoped sessions")
-        if ZopeTransactionExtension is None:
-            raise ImportError("ZopeTransactionExtension was not imported earlier")
+            raise ValueError("`zope.sqlalchemy` requires scoped sessions")
+        if zope_register is None:
+            raise ImportError("`zope.sqlalchemy` was not imported earlier")
         if "extension" in sa_sessionmaker_params:
             raise ValueError(
                 """`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`"""
             )
-        sa_sessionmaker_params["extension"] = ZopeTransactionExtension()
 
     if is_readonly or is_autocommit:
         sa_sessionmaker_params["autocommit"] = True
         sa_sessionmaker_params["expire_on_commit"] = False
 
     # this initializes the session
-    wrapped_engine.init_sessionmaker(is_scoped, sa_sessionmaker_params)
+    wrapped_engine.init_sessionmaker(
+        is_scoped, sa_sessionmaker_params, use_zope=use_zope
+    )
 
     # stash the wrapper
     _ENGINE_REGISTRY["engines"][engine_name] = wrapped_engine
