@@ -1,3 +1,5 @@
+![Python package](https://github.com/jvanasco/pyramid_sqlassist/workflows/Python%20package/badge.svg)
+
 sqlassist
 =========
 
@@ -6,6 +8,8 @@ SqlAssist offers a streamlined integration for handling multiple [SqlAlchemy](ht
 SqlAssist also offers some utility mixin/base classes for SqlAlchemy applications that are useful for debugging applications.
 
 This package has been working in production environments for several years.
+
+With `v0.13.0`, SqlAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
 
 With `v0.12.0`, there have been some API changes and the introduction of a `pyramid_debugtoolbar` panel
 
@@ -331,7 +335,7 @@ The reader and writer classes will start with an automatic rollback; The logger 
 By default, the package will try to load the following libraries:
 
     import transaction
-    from zope.sqlalchemy import ZopeTransactionExtension
+    from zope.sqlalchemy import register as zope_register
 
 This can be disabled with an environment variable
 

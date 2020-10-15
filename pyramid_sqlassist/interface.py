@@ -279,6 +279,10 @@ def initialize_engine(
         if i not in sa_sessionmaker_params:
             sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
 
+    # prior to v0.13.0 and zope.sqlalchemy==1.2, we would load the
+    # ZopeTransactionExtension into `sa_sessionmaker_params["extension"]`
+    # in this block.
+    # now we do a logic check, and pass `use_zope` into `init_sessionmaker`
     if use_zope:
         if not is_scoped:
             raise ValueError("`zope.sqlalchemy` requires scoped sessions")
