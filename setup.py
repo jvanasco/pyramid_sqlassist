@@ -11,6 +11,16 @@ with open(
 ) as v_file:
     VERSION = re.compile(r'.*__VERSION__ = "(.*?)"', re.S).match(v_file.read()).group(1)
 
+long_description = (
+    description
+) = "Efficiently manage multiple SqlAlchemy connections for Pyramid"
+try:
+    here = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(here, "README.md")) as fp:
+        long_description = fp.read()
+except:
+    pass
+
 requires = [
     "SQLAlchemy>=1.3.0",
     "pyramid",
@@ -30,8 +40,9 @@ testing_extras = tests_require + []
 setup(
     name="pyramid_sqlassist",
     version=VERSION,
-    description="Efficiently manage multiple SqlAlchemy connections for Pyramid",
-    long_description="Efficiently manage multiple SqlAlchemy connections for Pyramid",
+    description=description,
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     classifiers=[
         "Intended Audience :: Developers",
         "Framework :: Pyramid",

@@ -3,13 +3,13 @@
 sqlassist
 =========
 
-SqlAssist offers a streamlined integration for handling multiple [SqlAlchemy](https://github.com/sqlalchemy/sqlalchemy) database connections under [Pyramid](https://github.com/pylons/pyramid).
+SqlAssist offers a streamlined integration for handling multiple [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) database connections under [Pyramid](https://github.com/pylons/pyramid).
 
-SqlAssist also offers some utility mixin/base classes for SqlAlchemy applications that are useful for debugging applications.
+SqlAssist also offers some utility mixin/base classes for SQLAlchemy applications that are useful for debugging applications.
 
 This package has been working in production environments for several years.
 
-With `v0.13.0`, SqlAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
+With `v0.13.0`, SQLAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
 
 With `v0.12.0`, there have been some API changes and the introduction of a `pyramid_debugtoolbar` panel
 
@@ -27,14 +27,14 @@ non-scoped sessions are not integrated with the `transaction` package, as they a
 
 # Overview
 
-The package facilitates managing multiple SqlAlchemy connections under Pyramid through a single API.  It has been used in Celery too.
+The package facilitates managing multiple SQLAlchemy connections under Pyramid through a single API.  It has been used in Celery too.
 
 There are 4 steps to using this package:
 
-1. It is the job of your Pyramid application's `model` to create SqlAlchemy engines.
+1. It is the job of your Pyramid application's `model` to create SQLAlchemy engines.
 2. Each created engine should be passed into `pyramid_sqlassist.initialize_engine`
 3. After initializing all the engines, invoke `pyramid_sqlassist.register_request_method` with the name of the request attribute you wish to use
-4. SqlAlchemy classes in your model must inherit from `pyramid_sqlassist.DeclaredTable` -- which is just an instance of SqlAlchemy's `declarative_base`
+4. SQLAlchemy classes in your model must inherit from `pyramid_sqlassist.DeclaredTable` -- which is just an instance of SQLAlchemy's `declarative_base`
 
 
 Note: If your Pyramid application connects to the database BEFORE a process fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`.  This can be streamlined with the [`pyramid_forksafe`](https://github.com/jvanasco/pyramid_forksafe) plugin. 
@@ -44,7 +44,7 @@ Note: If your Pyramid application connects to the database BEFORE a process fork
 
 `pyramid_sqlassist` maintains a private Python dict in it's namespace: `_ENGINE_REGISTRY`.  
 
-Calling  `initialize_engine` will wrap each SqlAlchemy engine into a SqlAssist `EngineWrapper` and then register it into the `_ENGINE_REGISTRY`.  The wrapper contains a SqlAlchemy `sessionmaker` created for each engine, along with some convenience functions.
+Calling  `initialize_engine` will wrap each SQLAlchemy engine into a SqlAssist `EngineWrapper` and then register it into the `_ENGINE_REGISTRY`.  The wrapper contains a SQLAlchemy `sessionmaker` created for each engine, along with some convenience functions.
 
 Calling `register_request_method` will invoke Pyramid's `add_request_method` to add a `DbSessionsContainer` onto the Pyramid Request as a specified attribute name.
 
@@ -190,7 +190,7 @@ The panel is intended to help debug issues with connections - though there shoul
 
 Sections of this code were originally taken from or inspired by:
 
-* SqlAlchemy docs
+* SQLAlchemy docs
   * Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
   * Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
 * Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
@@ -304,7 +304,7 @@ in your handlers, you have this ( sqlalchemy is only imported to grab an excepti
 
 # UtilityObject
 
-If you inherit from this class, your SqlAlchemy objects have some convenience methods:
+If you inherit from this class, your SQLAlchemy objects have some convenience methods:
 
 * `get__by__id`( self, dbSession, id , id_column='id' ):
 * `get__by__column__lower`( self, dbSession, column_name , search , allow_many=False ):

@@ -1,3 +1,6 @@
+0.13.1
+	packaging fix
+
 0.13.0
 	* now requires:
 		zope.transaction >= 1.2
