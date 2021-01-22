@@ -5,21 +5,17 @@ import re
 
 from setuptools import setup
 
+HERE = os.path.abspath(os.path.dirname(__file__))
+
 # store version in the init.py
-with open(
-    os.path.join(os.path.dirname(__file__), "pyramid_sqlassist", "__init__.py")
-) as v_file:
+with open(os.path.join(HERE, "pyramid_sqlassist", "__init__.py")) as v_file:
     VERSION = re.compile(r'.*__VERSION__ = "(.*?)"', re.S).match(v_file.read()).group(1)
 
 long_description = (
     description
 ) = "Efficiently manage multiple SqlAlchemy connections for Pyramid"
-try:
-    here = os.path.abspath(os.path.dirname(__file__))
-    with open(os.path.join(here, "README.md")) as fp:
-        long_description = fp.read()
-except:
-    pass
+with open(os.path.join(HERE, "README.md")) as fp:
+    long_description = fp.read()
 
 requires = [
     "SQLAlchemy>=1.3.0",

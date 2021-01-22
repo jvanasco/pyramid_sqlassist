@@ -3,57 +3,85 @@
 sqlassist
 =========
 
-SqlAssist offers a streamlined integration for handling multiple [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) database connections under [Pyramid](https://github.com/pylons/pyramid).
+SqlAssist offers a streamlined integration for handling multiple
+[SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) database connections
+under [Pyramid](https://github.com/pylons/pyramid).
 
-SqlAssist also offers some utility mixin/base classes for SQLAlchemy applications that are useful for debugging applications.
+SqlAssist also offers some utility mixin/base classes for SQLAlchemy
+applications that are useful for debugging applications.
 
 This package has been working in production environments for several years.
 
 With `v0.13.0`, SQLAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
 
-With `v0.12.0`, there have been some API changes and the introduction of a `pyramid_debugtoolbar` panel
+With `v0.12.0`, there have been some API changes and the introduction of a
+`pyramid_debugtoolbar` panel.
 
-Help / direction is always appreciated.
+PRs are always appreciated.
 
 
 # WARNING
 
-This package uses scoped sessions by default.
+This package uses scoped Sessions by default.
 
-`v0.9.1` introduced a capability to use non-scoped sessions.  This appears to work, but hasn't been tested as thoroughly as I'd like.
+`v0.9.1` introduced a capability to use non-scoped Sessions. 
+This appears to work, but hasn't been tested as thoroughly as I'd like.
 
-non-scoped sessions are not integrated with the `transaction` package, as they are incompatible with Zope's transaction extension. There is probably a way to get this to work, patches welcome.
+Non-scoped Sessions are not integrated with the `transaction` package, as they
+were incompatible with Zope's transaction extension when support was last
+attempted.
+
+There is probably a way to get this to work, or things may have changed.
+Pull Requests are welcome.
 
 
 # Overview
 
-The package facilitates managing multiple SQLAlchemy connections under Pyramid through a single API.  It has been used in Celery too.
+The package facilitates managing multiple SQLAlchemy connections under Pyramid
+through a single API.  It has been used in Celery too.
 
 There are 4 steps to using this package:
 
-1. It is the job of your Pyramid application's `model` to create SQLAlchemy engines.
-2. Each created engine should be passed into `pyramid_sqlassist.initialize_engine`
-3. After initializing all the engines, invoke `pyramid_sqlassist.register_request_method` with the name of the request attribute you wish to use
-4. SQLAlchemy classes in your model must inherit from `pyramid_sqlassist.DeclaredTable` -- which is just an instance of SQLAlchemy's `declarative_base`
+1. It is the job of your Pyramid application's `model` to create
+   SQLAlchemy engines.
+2. Each created engine should be passed into
+   `pyramid_sqlassist.initialize_engine`
+3. After initializing all the engines, invoke
+   `pyramid_sqlassist.register_request_method` with the name of the request
+   attribute you wish to use
+4. SQLAlchemy classes in your model must inherit from
+   `pyramid_sqlassist.DeclaredTable` -- which is just an instance of
+   SQLAlchemy's `declarative_base`.
 
 
-Note: If your Pyramid application connects to the database BEFORE a process fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`.  This can be streamlined with the [`pyramid_forksafe`](https://github.com/jvanasco/pyramid_forksafe) plugin. 
+Note: If your Pyramid application connects to the database BEFORE a process
+fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`.  This can be
+streamlined with the
+[`pyramid_forksafe`](https://github.com/jvanasco/pyramid_forksafe) plugin. 
 
 
 ## What does all this accomplish?
 
-`pyramid_sqlassist` maintains a private Python dict in it's namespace: `_ENGINE_REGISTRY`.  
+`pyramid_sqlassist` maintains a private Python dict in it's
+namespace: `_ENGINE_REGISTRY`.  
 
-Calling  `initialize_engine` will wrap each SQLAlchemy engine into a SqlAssist `EngineWrapper` and then register it into the `_ENGINE_REGISTRY`.  The wrapper contains a SQLAlchemy `sessionmaker` created for each engine, along with some convenience functions.
+Calling  `initialize_engine` will wrap each SQLAlchemy engine into a SqlAssist
+`EngineWrapper` and then register it into the `_ENGINE_REGISTRY`.  The wrapper
+contains a SQLAlchemy `sessionmaker` created for each engine, along with some
+convenience functions.
 
-Calling `register_request_method` will invoke Pyramid's `add_request_method` to add a `DbSessionsContainer` onto the Pyramid Request as a specified attribute name.
+Calling `register_request_method` will invoke Pyramid's `add_request_method` to
+add a `DbSessionsContainer` onto the Pyramid Request as a specified attribute
+name.
 
-The `DbSessionsContainer` automatically register a cleanup function via Pyramid's `add_finished_callback` if the database is used.
+The `DbSessionsContainer` automatically register a cleanup function via
+Pyramid's `add_finished_callback` if the database is used.
 
 
 # Example
 
-This is an example `model.py` for a Pyramid app, which creates a READER and WRITER connection.
+This is an example `model.py` for a Pyramid app, which creates a READER and
+WRITER connection.
 
 
     # model.py
@@ -94,7 +122,9 @@ This is an example `model.py` for a Pyramid app, which creates a READER and WRIT
 
 # Miscellaneous info
 
-Because Pyramid will lazily create the request database interaction object it is very lightweight.  On initialization, the container will register a cleanup routine via `add_finished_callback`.
+Because Pyramid will lazily create the request database interaction object, it
+is very lightweight.  On initialization, the container will register a
+cleanup routine via `add_finished_callback`.
 	
 The `DbSessionsContainer` exposes some methods:
 
@@ -106,9 +136,12 @@ The `DbSessionsContainer` exposes some methods:
 * `get_reader` - method. lazy access to "reader" connection
 * `get_writer` - method. lazy access to "writer" connection
 * `get_logger` - method. lazy access to "logger" connection
-* `get_any` - method. tries to find memoized connections. otherwise will invoke a method.
+* `get_any` - method. tries to find memoized connections.
+  otherwise will invoke another method.
 
-On first access of every "session", the container will re-initialize that session by invoking it as a callable, issuing a `.rollback()`, and stashing the current Pyramid request in the session's `info` dict. 
+On first access of every "Session", the container will re-initialize that
+Session by invoking it as a callable, issuing a `.rollback()`, and stashing the
+current Pyramid request in the Session's `info` dict. 
 
 Within your code, the request can be retrieved via `object_session`
 
@@ -116,13 +149,16 @@ Within your code, the request can be retrieved via `object_session`
 	_session = object_session(ExampleObject)
 	request = _session.info['request']
 
-The cleanup function will call `session.remove()` for all sessions that were used within the request.
+The cleanup function will call `session.remove()` for all Sessions that were
+used within the request.
 
-A postfork hook is available if needed via `reinit_engine`.  For all managed engines, `engine.dispose()` will be called.
+A postfork hook is available if needed via `reinit_engine`. 
+For all managed engines, `engine.dispose()` will be called.
 
 # Why it works:
 
-`DeclaredTable` is simply an instance of `sqlalchemy.ext.declarative.declarative_base`, bound to our own metadata
+`DeclaredTable` is simply an instance of
+`sqlalchemy.ext.declarative.declarative_base`, bound to our own metadata
 
 	# via Pyramid
 	# Recommended naming convention used by Alembic, as various different database
@@ -144,7 +180,10 @@ A postfork hook is available if needed via `reinit_engine`.  For all managed eng
 
 Subclassing tables from `DeclaredTable` takes care of all the core ORM setup.
 
-When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers` is triggered (this can be deferred to first usage of the ORM, but most people will want to take the performance hit on startup and try to push the mapped tables into shared memory before a fork)
+When `initialize_engine` is called, by default
+`sqlalchemy.orm.configure_mappers` is triggered (this can be deferred to first
+usage of the ORM, but most people will want to take the performance hit on
+startup and try to push the mapped tables into shared memory before a fork).
 
 
 # Misc Objects
@@ -155,12 +194,14 @@ When `initialize_engine` is called, by default `sqlalchemy.orm.configure_mappers
 
 ## `.tools`
 
-* this namepace is currently unused ; it houses some in-progress code for supporting table reflection
+* this namepace is currently unused;
+  it houses some in-progress code for supporting table reflection
 
 
 # debugtoolbar support
 
-simply add `pyramid_sqlassist.debugtoolbar` to `debugtoolbar.includes` for your application.
+Simply add `pyramid_sqlassist.debugtoolbar` to `debugtoolbar.includes`
+for your application.
 
 For example, this is a line from a `.ini` file
 
@@ -173,17 +214,20 @@ The sqlassist debugtoolbar panel includes information such as:
 * the engine status for the active request (initialized, started, ended)
 * the engines configured for the application and available to the request 
 
-The panel is intended to help debug issues with connections - though there should be none. 
+The panel is intended to help debug issues with connections - though there
+should be none. 
 
 
 # TODO:
 
-* debugtoolbar: show id information for the underlying connections and connection pool to help troubleshoot potential forking issues
+* debugtoolbar: show id information for the underlying connections and
+  connection pool to help troubleshoot potential forking issues
 
 
 # Notes
 
-* PYTHONOPTIMIZE.  all logging functions are nested under `if __debug__:` statements; they can be compiled away during production
+* `PYTHONOPTIMIZE`. All logging functions are nested under `if __debug__:`
+  statements; they can be compiled away during production
 
 
 # Thanks
@@ -191,8 +235,8 @@ The panel is intended to help debug issues with connections - though there shoul
 Sections of this code were originally taken from or inspired by:
 
 * SQLAlchemy docs
-  * Using Thread-Local Scope with Web Applications ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications )
-  * Session Frequently Asked Questions ( http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions )
+  * [Using Thread-Local Scope with Web Applications](http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#using-thread-local-scope-with-web-applications)
+  * [Session Frequently Asked Questions](http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#session-frequently-asked-questions)
 * Mike Bayer's blog post 'Django-style Database Routers in SQLAlchemy'
 * Pyramid's `@reify` decorator and `set_request_property` attribute
 * Mike Orr's package 'sqlahelper'
@@ -201,11 +245,11 @@ Sections of this code were originally taken from or inspired by:
 
 # Example Usage
 
-in your `env.ini`, specify multiple sqlalchemy urls (which might be to different dbs or the same db but with different permissions)
+In your `env.ini`, specify multiple sqlalchemy urls (which might be to
+different dbs or the same db but with different permissions):
 
 	sqlalchemy_reader.url = postgres://myapp_reader:myapp@localhost/myapp
 	sqlalchemy_writer.url = postgres://myapp_writer:myapp@localhost/myapp
-
 
 /__init__.py:main
 
@@ -226,7 +270,6 @@ in your `env.ini`, specify multiple sqlalchemy urls (which might be to different
 		...
 		models.initialize_database(settings)
 		...
-
 
 /models/__init__.py
 
@@ -256,7 +299,6 @@ in your `env.ini`, specify multiple sqlalchemy urls (which might be to different
 	def request_setup_dbSession(request):
 		return sqlassist.DbSessionsContainer(request)
 
-
 /models/actual_models.py
 
 	import sqlalchemy as sa
@@ -269,8 +311,8 @@ in your `env.ini`, specify multiple sqlalchemy urls (which might be to different
 		name = sa.Column(sa.Unicode(255), nullable=False)
 		description = sa.Column(sa.Text, nullable=False)
 
-
-in your handlers, you have this ( sqlalchemy is only imported to grab an exception... ):
+in your handlers, you have the following. Note, `sqlalchemy` is only imported
+to grab an exception:
 
 	import sqlalchemy
 
@@ -304,7 +346,8 @@ in your handlers, you have this ( sqlalchemy is only imported to grab an excepti
 
 # UtilityObject
 
-If you inherit from this class, your SQLAlchemy objects have some convenience methods:
+If you inherit from this class, your SQLAlchemy objects have some convenience
+methods:
 
 * `get__by__id`( self, dbSession, id , id_column='id' ):
 * `get__by__column__lower`( self, dbSession, column_name , search , allow_many=False ):
@@ -325,9 +368,11 @@ This convenience class ONLY deals with 3 connections right now :
 * writer
 * logger
 
-If you have more/different names - subclass (or create a patch to deal with dynamic names!)  I didn't have time for that.
+If you have more/different names - subclass (or create a patch to deal with
+dynamic names!)  I didn't have time for that.
 
-The reader and writer classes will start with an automatic rollback; The logger will not.
+The reader and writer classes will start with an automatic rollback;
+The logger will not.
 
 
 # `transaction` support
@@ -358,7 +403,8 @@ if you're not using "Zope" & "transaction" modules :
 
 ## Rollbacks
 
-you want to call `rollback` on the specific database sessions to control what is in each one
+you want to call `rollback` on the specific database Sessions to control what
+is in each one
 
 
 ## catching exceptions if you're trying to support both `transaction.commit()` and `dbsession.commit()`
@@ -384,5 +430,6 @@ You must explicitly invoke a `rollback` after the `AssertionError`
 
 # Reflected Tables
 
-this package once supported trying to handle table reflection.  It is being removed unless someone wants to do a better job.
+this package once supported trying to handle table reflection. 
+It is being removed unless someone wants to do a better job.
 
