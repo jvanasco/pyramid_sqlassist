@@ -720,12 +720,12 @@ class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
         resp2 = req2.get_response(app)
         self.assertEqual(resp2.status_code, 200)
 
-        self.assertIn("<h3>SqlAssist</h3>", resp2.text)
+        self.assertIn("<h3>SQLAssist</h3>", resp2.text)
         self.assertIn(
-            "The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.",
+            "The SQLAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.",
             resp2.text,
         )
-        self.assertIn("no connections were active on this request.", resp2.text)
+        self.assertIn("No connections were active on this `request`.", resp2.text)
 
     def test_panel_tracks(self):
 
@@ -761,16 +761,16 @@ class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
         resp2 = req2.get_response(app)
         self.assertEqual(resp2.status_code, 200)
 
-        self.assertIn("<h3>SqlAssist</h3>", resp2.text)
+        self.assertIn("<h3>SQLAssist</h3>", resp2.text)
         self.assertIn(
-            "The SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.",
+            "The SQLAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.",
             resp2.text,
         )
-        self.assertNotIn("no connections were active on this request.", resp2.text)
+        self.assertNotIn("No connections were active on this `request`.", resp2.text)
         self.assertIn("<h3>Active on this Request</h3>", resp2.text)
         # the object type could be `sqlalchemy.orm.scroping.scoped_session` or `sqlalchemy.orm.session.Session`
         self.assertIn(
-            """<p>\n\t\tThe SqlAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.\n\t</p>\n\t\n\t\n\t<h3>Active on this Request</h3>\n\t\n\t\t<table class="table table-striped table-condensed">\n\t\t\t<thead>\n\t\t\t\t<tr>\n\t\t\t\t\t<th>connection</th>\n\t\t\t\t\t<th>connection object</th>\n\t\t\t\t</tr>\n\t\t\t</thead>\n\t\t\t<tbody>\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<th>writer</th>\n\t\t\t\t\t\t<td>&lt;sqlalchemy.orm.""",
+            """<p>\n\t\tThe SQLAssist <code>`DbSessionsContainer`</code> is registered onto the Pyramid `Request` object as <code>request.dbSession</code>.\n\t</p>\n\t\n\t\n\t<h3>Active on this Request</h3>\n\t\n\t\t<table class="table table-striped table-condensed">\n\t\t\t<thead>\n\t\t\t\t<tr>\n\t\t\t\t\t<th>connection</th>\n\t\t\t\t\t<th>connection object</th>\n\t\t\t\t</tr>\n\t\t\t</thead>\n\t\t\t<tbody>\n\t\t\t\t\t<tr>\n\t\t\t\t\t\t<th>writer</th>\n\t\t\t\t\t\t<td>&lt;sqlalchemy.orm.""",
             resp2.text,
         )
 
