@@ -46,7 +46,7 @@ setup(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
     ],
-    keywords="web pyramid sqlalchemy",
+    keywords="web Pyramid SQLAlchemy",
     packages=["pyramid_sqlassist"],
     author="Jonathan Vanasco",
     author_email="jonathan@findmeon.com",

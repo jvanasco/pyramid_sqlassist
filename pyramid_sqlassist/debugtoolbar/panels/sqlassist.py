@@ -8,7 +8,7 @@ class PyramidSqlAssistDebugPanel(DebugPanel):
     Sample debug panel
     """
 
-    name = "SqlAssist"
+    name = "SQLAssist"
     has_content = True
     template = "pyramid_sqlassist.debugtoolbar.panels:templates/sqlassist.dbtmako"
 

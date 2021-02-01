@@ -1,5 +1,11 @@
+0.14.0
+	* support for `transaction` is slightly altered.  this package will now raise
+  	  an import error if `transaction` and `zope.sqlalchemy` are not available IF the
+	  environment variable `SQLASSIST_DISABLE_TRANSACTION` is not set.
+	* cleaned up docstrings
+	  
 0.13.1
-	packaging fix
+	* packaging fixes
 
 0.13.0
 	* now requires:
@@ -9,7 +15,7 @@
 0.12.1dev
 	# no release needed as this is just testing/internal changes
 	* testing changes
-	* some changes on text of value errors in `initialize_engine
+	* some changes on text of value errors in `initialize_engine`
 	* black
 	* upgraded black; 20.8b1
 	* integrated with pre-commit
@@ -17,9 +23,8 @@
 0.12.0
 	* integrated tests and test application
 	* debugtoolbar support
-	* `objects.UtilityObject`: kwarg `start` renamed to `offset`
+	* `objects.UtilityObject`: kwarg "start" renamed to "offset"
 	* `objects.UtilityObjec.get__`: methods are classmethods again
-
 
 0.11.0
 	* Python3
@@ -42,7 +47,7 @@
 	* added setup.cfg
 	* cleaned up some formatting
 	* added `session_factory`
-	* moved version to __init__.py
+	* moved version to `__init__.py`
 	* capitalized `_ENGINE_REGISTRY`
 	* added `is_autocommit` for tracking.
 
@@ -50,11 +55,11 @@
 	* added `is_configure_mappers` hook to engine intialization.
 
 0.9.1
-	* suppress loading ZOPE with a environment variable: SQLASSIST_DISABLE_TRANSACTION
+	* suppress loading ZOPE with a environment variable: `SQLASSIST_DISABLE_TRANSACTION`
 	* TESTING - adding support for non-scoped sessions
 
 0.9.0
-	* redid most classes/interface; incompatible with earlier versions (but now better
+	* redid most classes/interface; incompatible with earlier versions (but now better!)
 	* dropping tweens
 	* cleaning/consolidating code
 
@@ -66,27 +71,27 @@
 
 0.1.5
 	* fixing some issues with spacing
-	* wrapped a few `log` statemets in __debug__
-	* added reinit_engine to function as a postfork hook under uwsgi
+	* wrapped a few `log` statemets in `__debug__` clauses
+	* added `reinit_engine` to function as a postfork hook under *uwsgi*
 
 0.1.4
-	* adding some logic onto dbSessionSetup to only set requests up once.  this is pretty poorly done, but is backwards compatible.  this needs to be recoded.
+	* adding some logic onto `dbSessionSetup` to only set requests up once.  this is pretty poorly done, but is backwards compatible.  this needs to be recoded.
 	* now logging info about the request ( name + id )
 	* passing `request` into various setups
 
 0.0.9
-	pushed logging into __debug__ conditionals
+	pushed logging into `__debug__` conditionals
 	cleaned up tween
 
 0.0.8
-	added DbSessionsContainer , which allows you to store and manage a sqlassist interface
+	added `DbSessionsContainer` , which allows you to store and manage a sqlassist interface
 
 0.0.7
 	making this production usable by removing the non-bind paramter sql searching ( possible attack vector )
 
 0.0.6
-	added pyramid classifier
-	made zope optional
+	added `pyramid` classifier
+	made `zope` optional
 
 
 0.0.5

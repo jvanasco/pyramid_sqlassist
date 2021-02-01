@@ -32,8 +32,15 @@ class UtilityObject(CoreObject):
 
     @classmethod
     def get__by__id(cls, dbSession, id, id_column="id"):
-        """classmethod. gets an item by an id column named 'id'.  id column can be overriden"""
-        # cls = self.__class__
+        """
+        Classmethod.
+
+        Gets an item by an id column named 'id'.  id column can be overriden.
+
+        :param dbSession: The SQLAlchemy ``Session`` to query.
+        :param id: The "id" of the object to query. Likely a String or Integer.
+        :param id_column: The column hosting the identifier. Default: "id".
+        """
         if not hasattr(cls, id_column) and hasattr(cls, "__table_pkey__"):
             id_column = cls.__table_pkey__
         id_col = getattr(cls, id_column)
@@ -47,10 +54,20 @@ class UtilityObject(CoreObject):
     def get__by__column__lower(
         cls, dbSession, column_name, search, allow_many=False, offset=0, limit=None
     ):
-        """classmethod. gets items from the database based on a lowercase version of the column.
+        """
+        Classmethod.
+
+        Gets items from the database based on a lowercase version of the column.
         useful for situations where you have a function index on a table
-        (such as indexing on the lower version of an email addresses)"""
-        # cls = self.__class__
+        (such as indexing on the lower version of an email addresses)
+
+        :param dbSession: The SQLAlchemy ``Session`` to query.
+        :param column_name:
+        :param search:
+        :param allow_many: default ``False```
+        :param offset: default ``0``
+        :param limit: default ``None``
+        """
         items = (
             dbSession.query(cls)
             .filter(func_lower(getattr(cls, column_name)) == search.lower())
@@ -74,8 +91,18 @@ class UtilityObject(CoreObject):
     def get__by__column__similar(
         cls, dbSession, column_name, seed, prefix_only=True, offset=0, limit=None
     ):
-        """classmethod. searches for a name column entry with the submitted seed prefix"""
-        # cls = self.__class__
+        """
+        Classmethod.
+
+        Searches for a name column entry with the submitted seed prefix.
+
+        :param dbSession: The SQLAlchemy ``Session`` to query.
+        :param column_name:
+        :param seed:
+        :param prefix_only: default ``True```
+        :param offset: default ``0``
+        :param limit: default ``None``
+        """
         query = dbSession.query(cls)
         if prefix_only:
             query = query.filter(
@@ -95,8 +122,16 @@ class UtilityObject(CoreObject):
 
     @classmethod
     def get__by__column__exact_then_ilike(cls, dbSession, column_name, seed):
-        """classmethod. searches for an exact match, then case-insensitive version of the name column if no match is found"""
-        # cls = self.__class__
+        """
+        Classmethod.
+
+        Searches for an exact match, then case-insensitive version of the
+        identified column if no match is found.
+
+        :param dbSession: The SQLAlchemy ``Session`` to query.
+        :param column_name:
+        :param seed:
+        """
         item = dbSession.query(cls).filter(getattr(cls, column_name) == seed).first()
         if not item:
             item = (
@@ -115,16 +150,28 @@ class UtilityObject(CoreObject):
         sort_direction="asc",
         order_col=None,
         order_case_sensitive=True,
-        filters=[],
+        filters=None,
         debug_query=False,
     ):
-        """classmethod. gets a range of items"""
-        # cls = self.__class__
+        """
+        Classmethod.
+
+        :param dbSession: The SQLAlchemy ``Session`` to query.
+        :param offset: default ``0``
+        :param limit: default ``None``
+        :param sort_direction: default asc"
+        :param order_col: default ``None``
+        :param order_case_sensitive: default ``True``
+        :param filters: default ``None``
+        :param debug_query: default ``False``
+        """
+
         if not order_col:
             order_col = "id"
         query = dbSession.query(cls)
-        for filter in filters:
-            query = query.filter(filter)
+        if filters:
+            for _filter in filters:
+                query = query.filter(_filter)
         for col in order_col.split(","):
             # declared columns do not have cls.__class__.c
             # reflected columns did in earlier sqlalchemy
@@ -143,15 +190,20 @@ class UtilityObject(CoreObject):
                 raise ValueError("invalid sort direction")
         query = query.offset(offset).limit(limit)
         results = query.all()
-        if __debug__ and debug_query:
-            log.debug("get__range")
-            log.debug(query)
-            log.debug(results)
+        if __debug__:
+            if debug_query:
+                log.debug("get__range")
+                log.debug(query)
+                log.debug(results)
         return results
 
     def columns_as_dict(self):
         """
-        Beware- this function will trigger a load of attributes if they have not been loaded yet.
+        Beware!
+        This function will trigger a load of attributes if they have not been
+        loaded yet.
+
+        To return only the loaded columns, use ``loaded_columns_as_dict``.
         """
         return dict(
             (col.name, getattr(self, col.name))
@@ -161,6 +213,9 @@ class UtilityObject(CoreObject):
     def loaded_columns_as_dict(self):
         """
         This function will only return the loaded columns as a dict.
+
+        To return ALL columns, potentially triggering the loading of attributes,
+        use ``columns_as_dict``.
 
         See Also: ``loaded_columns_as_list``
         """
@@ -174,8 +229,12 @@ class UtilityObject(CoreObject):
     def loaded_columns_as_list(self, with_values=False):
         """
         This function will only return the loaded columns as a list.
+
         By default this returns a list of the keys(columns) only.
+
         Passing in the argument `with_values=True` will return a list of key(column)/value tuples, which could be blessed into a dict.
+
+        :param with_values: boolean. default ``False``.
 
         See Also: ``loaded_columns_as_dict``
         """
@@ -193,10 +252,22 @@ class UtilityObject(CoreObject):
         ]
 
     @property
+    def _sqlalchemy_session(self):
+        """
+        Return the current SQLAlchemy Session for this object.
+
+        This should not be memoized, as an object can be merged across sessions.
+        """
+        session = object_session(self)
+        return session
+
+    @property
     def _pyramid_request(self):
         """
-        pyramid_sqlassist stashes the `request` in `_session.info['request']`
-        this should not be memoized, as an object can be merged across sessions
+        SQLAssist stashes the active Pyramid ``request`` in the SQLAlchemy
+        Session's "info" dict as ``_session.info['request']``.
+
+        This should not be memoized, as an object can be merged across sessions.
         """
         session = object_session(self)
         request = session.info["request"]

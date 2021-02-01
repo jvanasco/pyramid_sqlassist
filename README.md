@@ -1,23 +1,28 @@
 ![Python package](https://github.com/jvanasco/pyramid_sqlassist/workflows/Python%20package/badge.svg)
 
-sqlassist
-=========
+pyramid_sqlassist
+=================
 
-SqlAssist offers a streamlined integration for handling multiple
+SQLAssist offers a streamlined integration for handling multiple
 [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) database connections
-under [Pyramid](https://github.com/pylons/pyramid).
+under [Pyramid](https://github.com/pylons/pyramid).  It ships with first-party
+support for "reader", "writer" and "logger" concepts - but can be extended to
+support any design.
 
-SqlAssist also offers some utility mixin/base classes for SQLAlchemy
-applications that are useful for debugging applications.
+SQLAssist also offers some utility mixin/base classes for SQLAlchemy
+applications that are useful for debugging applications. A debugtoolbar panel
+is included as well, which can be used to further aid in development.
 
-This package has been working in production environments for several years.
+This package has been working in production environments for many years.
+
+PRs are always appreciated.
+
+Recent changes:
 
 With `v0.13.0`, SQLAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
 
 With `v0.12.0`, there have been some API changes and the introduction of a
 `pyramid_debugtoolbar` panel.
-
-PRs are always appreciated.
 
 
 # WARNING
@@ -25,7 +30,7 @@ PRs are always appreciated.
 This package uses scoped Sessions by default.
 
 `v0.9.1` introduced a capability to use non-scoped Sessions. 
-This appears to work, but hasn't been tested as thoroughly as I'd like.
+This appears to work, but has not been tested as thoroughly as I'd like.
 
 Non-scoped Sessions are not integrated with the `transaction` package, as they
 were incompatible with Zope's transaction extension when support was last
@@ -53,7 +58,6 @@ There are 4 steps to using this package:
    `pyramid_sqlassist.DeclaredTable` -- which is just an instance of
    SQLAlchemy's `declarative_base`.
 
-
 Note: If your Pyramid application connects to the database BEFORE a process
 fork, you must call `pyramid_sqlassist.reinit_engine(/engine/)`.  This can be
 streamlined with the
@@ -65,7 +69,7 @@ streamlined with the
 `pyramid_sqlassist` maintains a private Python dict in it's
 namespace: `_ENGINE_REGISTRY`.  
 
-Calling  `initialize_engine` will wrap each SQLAlchemy engine into a SqlAssist
+Calling  `initialize_engine` will wrap each SQLAlchemy engine into a SQLAssist
 `EngineWrapper` and then register it into the `_ENGINE_REGISTRY`.  The wrapper
 contains a SQLAlchemy `sessionmaker` created for each engine, along with some
 convenience functions.
@@ -76,6 +80,9 @@ name.
 
 The `DbSessionsContainer` automatically register a cleanup function via
 Pyramid's `add_finished_callback` if the database is used.
+
+As a convenience, the active Pyramid request is stashed in each SQLAlchmey
+session's "info" dict.
 
 
 # Example
@@ -93,6 +100,7 @@ WRITER connection.
 
     def initialize_database(config, settings):
 
+		# setup the reader
 		engine_reader = sqlalchemy.engine_from_config(settings,
 													  prefix="sqlalchemy_reader.",
 													  )
@@ -104,6 +112,7 @@ WRITER connection.
 											is_scoped=is_scoped,
 											)
 
+		# setup the writer
 		engine_writer = sqlalchemy.engine_from_config(settings,
 													  prefix="sqlalchemy_writer.",
 													  echo=sqlalchemy_echo,
@@ -116,6 +125,7 @@ WRITER connection.
 											is_scoped=is_scoped,
 											)
 
+		# setup the shared interface
 		pyramid_sqlassist.register_request_method(config, 'dbSession')
 
 
@@ -207,7 +217,7 @@ For example, this is a line from a `.ini` file
 
 	debugtoolbar.includes = pyramid_sqlassist.debugtoolbar
 
-The sqlassist debugtoolbar panel includes information such as:
+The SQLAssist debugtoolbar panel includes information such as:
 
 * the request attribute the `DbSessionsContainer` has been memoized into
 * the connections which were active for the request
