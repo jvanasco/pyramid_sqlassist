@@ -1,4 +1,4 @@
-include pyramid_sqlassist/debugtoolbar/__init__.py
-include pyramid_sqlassist/debugtoolbar/panels/__init__.py
-include pyramid_sqlassist/debugtoolbar/panels/sqlassist.py
-include pyramid_sqlassist/debugtoolbar/panels/templates/sqlassist.dbtmako
+include pyramid_sqlassist/*
+include pyramid_sqlassist/debugtoolbar/*
+include pyramid_sqlassist/debugtoolbar/panels/*
+include pyramid_sqlassist/debugtoolbar/panels/templates/*

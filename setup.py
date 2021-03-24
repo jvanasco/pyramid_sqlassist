@@ -4,6 +4,7 @@ import os
 import re
 
 from setuptools import setup
+from setuptools import find_packages
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 
@@ -18,7 +19,7 @@ with open(os.path.join(HERE, "README.md")) as fp:
     long_description = fp.read()
 
 requires = [
-    "SQLAlchemy>=1.3.0",
+    "SQLAlchemy<1.4.0",
     "pyramid",
     "six",
 ]
@@ -47,7 +48,7 @@ setup(
         "License :: OSI Approved :: MIT License",
     ],
     keywords="web Pyramid SQLAlchemy",
-    packages=["pyramid_sqlassist"],
+    packages=find_packages(exclude=("tests",)),
     author="Jonathan Vanasco",
     author_email="jonathan@findmeon.com",
     url="https://github.com/jvanasco/pyramid_sqlassist",

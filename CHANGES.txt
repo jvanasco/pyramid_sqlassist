@@ -3,7 +3,9 @@
   	  an import error if `transaction` and `zope.sqlalchemy` are not available IF the
 	  environment variable `SQLASSIST_DISABLE_TRANSACTION` is not set.
 	* cleaned up docstrings
-	  
+	* packaging fixes
+	* excluding SQLAlchemy==1.4 branch until further testing can be done. this will return soon.
+	
 0.13.1
 	* packaging fixes
 
