@@ -1,4 +1,10 @@
-include *.py
-global-exclude *.pyc
-recursive-include pyramid_sqlassist *.py *.dbtmako
-recursive-include tests *.py *.mako
+graft src
+graft tests
+
+include setup.cfg pyproject.toml
+include tox.ini
+include README.md
+include CHANGES.txt
+include TESTING.txt
+
+recursive-exclude * __pycache__ *.py[cod] .DS_Store

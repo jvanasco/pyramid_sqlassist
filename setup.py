@@ -9,7 +9,7 @@ from setuptools import find_packages
 HERE = os.path.abspath(os.path.dirname(__file__))
 
 # store version in the init.py
-with open(os.path.join(HERE, "pyramid_sqlassist", "__init__.py")) as v_file:
+with open(os.path.join(HERE, "src", "pyramid_sqlassist", "__init__.py")) as v_file:
     VERSION = re.compile(r'.*__VERSION__ = "(.*?)"', re.S).match(v_file.read()).group(1)
 
 long_description = (
@@ -48,7 +48,11 @@ setup(
         "License :: OSI Approved :: MIT License",
     ],
     keywords="web Pyramid SQLAlchemy",
-    packages=find_packages(exclude=("tests",)),
+    packages=find_packages(
+        where="src",
+    ),
+    package_dir={"": "src"},
+    include_package_data=True,
     author="Jonathan Vanasco",
     author_email="jonathan@findmeon.com",
     url="https://github.com/jvanasco/pyramid_sqlassist",
