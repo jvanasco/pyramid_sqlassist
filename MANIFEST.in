@@ -1,4 +1,4 @@
-include pyramid_sqlassist/*
-include pyramid_sqlassist/debugtoolbar/*
-include pyramid_sqlassist/debugtoolbar/panels/*
-include pyramid_sqlassist/debugtoolbar/panels/templates/*
+include *.py
+global-exclude *.pyc
+recursive-include pyramid_sqlassist *.py *.dbtmako
+recursive-include tests *.py *.mako
