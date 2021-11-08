@@ -1,3 +1,9 @@
+0.14.2
+	* New Requirements:
+	  *  SqlAlchemy > 1.4.7
+	  *  [testing] ZopeSqlAlchemy > 1.6
+	  transaction does not work with the 1.4-1.4.6 of SqlAlchemy
+
 0.14.1
 	* packaging fixes
 

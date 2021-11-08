@@ -19,7 +19,7 @@ with open(os.path.join(HERE, "README.md")) as fp:
     long_description = fp.read()
 
 requires = [
-    "SQLAlchemy<1.4.0",
+    "SQLAlchemy>1.4.7",
     "pyramid",
     "six",
 ]
@@ -30,7 +30,7 @@ tests_require = [
     "pyramid_tm",
     "transaction",
     "webtest",
-    "zope.sqlalchemy>=1.2",
+    "zope.sqlalchemy>=1.6",
 ]
 testing_extras = tests_require + []
 
