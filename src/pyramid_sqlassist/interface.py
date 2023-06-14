@@ -1,21 +1,25 @@
+# stdlib
 import logging
+import os
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import Union
+
+# pypi
+from pyramid.decorator import reify  # type: ignore[import]
+import sqlalchemy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import sessionmaker
+from typing_extensions import TypedDict
+
+# ==============================================================================
 
 log = logging.getLogger(__name__)
-
-
-# stdlib
-import os
-
-
-# sqlalchemy imports
-import sqlalchemy
-import sqlalchemy.orm as sqlalchemy_orm
-from sqlalchemy.ext.declarative import declarative_base
-
-
-# use pyramid's reify to memoize
-from pyramid.decorator import reify
-
 
 # ``transaction`` (package)` support
 # If ``transaction`` support is not desired, set the following environment variable
@@ -23,20 +27,39 @@ from pyramid.decorator import reify
 # otherwise, the library assumes ``transaction`` is desired and will attempt
 # to load the package, potentially raising exceptions.
 SQLASSIST_DISABLE_TRANSACTION = int(os.environ.get("SQLASSIST_DISABLE_TRANSACTION", 0))
+transaction: Optional[Type]
+zope_register: Optional[Callable]
 if SQLASSIST_DISABLE_TRANSACTION:
     log.info("pyramid_sqlassist: transaction imports disabled")
     transaction = None
     zope_register = None
 else:
-    import transaction
-    from zope.sqlalchemy import register as zope_register
+    import transaction  # type: ignore[import,no-redef]  # noqa: F401
+    from zope.sqlalchemy import register as zope_register  # type: ignore[import,no-redef]
 
 
-# ==============================================================================
+if TYPE_CHECKING:
+    from pyramid.config import Configurator  # type: ignore[import]
+    from pyramid.request import Request  # type: ignore[import]
+    from sqlalchemy.engine.base import Engine
+    from sqlalchemy.orm.session import Session
+
+    _TYPES_SESSION = Union[Session, scoped_session[Any], None]
+
+
+# ------------------------------------------------------------------------------
 
 
 # define an engine registry (GLOBAL)
-_ENGINE_REGISTRY = {"!default": None, "engines": {}}
+_ENGINE_REGISTRY_TYPE = TypedDict(
+    "_ENGINE_REGISTRY_TYPE",
+    {
+        "!default": Optional[str],
+        "engines": Dict[str, "EngineWrapper"],
+    },
+)
+
+_ENGINE_REGISTRY: _ENGINE_REGISTRY_TYPE = {"!default": None, "engines": {}}
 
 
 # via pyramid
@@ -65,7 +88,11 @@ class STATUS_CODES(object):
     START = 1
     END = 2
 
-    _readable = {INIT: "INIT", START: "START", END: "END"}
+    _readable = {
+        INIT: "INIT",
+        START: "START",
+        END: "END",
+    }
 
 
 # ------------------------------------------------------------------------------
@@ -77,7 +104,7 @@ class EngineStatusTracker(object):
     the ``DbSessionsContainer``.
     """
 
-    engines = None
+    engines: Dict[str, int]
 
     def __init__(self):
         self.engines = {}
@@ -91,20 +118,29 @@ class EngineWrapper(object):
     wraps SQLAlchemy's engine object(s) with convenience functions
     """
 
-    engine_name = None
-    sa_engine = None
-    sa_sessionmaker = None
-    sa_session = None
-    sa_session_scoped = None
-    is_scoped = None
+    engine_name: str
+    sa_engine: "Engine"
+    sa_sessionmaker: "sessionmaker"
+    sa_session: "Session"
+    sa_session_scoped: "scoped_session"
+    is_scoped: bool
 
-    def __init__(self, engine_name, sa_engine=None):
+    def __init__(
+        self,
+        engine_name: str,
+        sa_engine: "Engine",
+    ):
         if __debug__:
             log.debug("EngineWrapper.__init__()")
         self.engine_name = engine_name
         self.sa_engine = sa_engine
 
-    def init_sessionmaker(self, is_scoped, sa_sessionmaker_params, use_zope=None):
+    def init_sessionmaker(
+        self,
+        is_scoped: bool,
+        sa_sessionmaker_params: Dict,
+        use_zope: Optional[bool] = None,
+    ):
         """
         :param is_scoped: boolean.
         :param sa_sessionmaker_params: dict. Passed as-is to ``sqlalchemy.orm.sessionmaker()``
@@ -113,12 +149,16 @@ class EngineWrapper(object):
         if __debug__:
             log.debug("EngineWrapper.init_sessionmaker()")
         sa_sessionmaker_params["bind"] = self.sa_engine
-        sa_sessionmaker = sqlalchemy_orm.sessionmaker(**sa_sessionmaker_params)
+        sa_sessionmaker = sessionmaker(**sa_sessionmaker_params)
         self.sa_sessionmaker = sa_sessionmaker
         if is_scoped:
             self.is_scoped = True
-            self.sa_session_scoped = sqlalchemy_orm.scoped_session(sa_sessionmaker)
+            self.sa_session_scoped = scoped_session(sa_sessionmaker)
             if use_zope:
+                if zope_register is None:
+                    raise ValueError("`zope_register` was not imported")
+                if not self.sa_session_scoped:
+                    raise ValueError("missing self.sa_session_scoped")
                 zope_register(self.sa_session_scoped)
         else:
             if use_zope:
@@ -127,20 +167,25 @@ class EngineWrapper(object):
             self.sa_session = sa_sessionmaker()
 
     @property
-    def session(self):
+    def session(self) -> "_TYPES_SESSION":
         """accessor property for sessions"""
         if self.is_scoped:
             return self.sa_session_scoped
         return self.sa_session
 
     @property
-    def _session_repr(self):
+    def _session_repr(self) -> str:
         """private property, only used for logging"""
         if self.is_scoped:
             return str(self.sa_session_scoped)
         return str(self.sa_session)
 
-    def request_start(self, request, dbSessionsContainer, force=False):
+    def request_start(
+        self,
+        request: "Request",
+        dbSessionsContainer: "DbSessionsContainer",
+        force: bool = False,
+    ) -> None:
         """
         This is called once per engine, per request.
 
@@ -156,10 +201,11 @@ class EngineWrapper(object):
                 self._session_repr,
             )
 
-        if (
-            dbSessionsContainer._engine_status_tracker.engines[self.engine_name]
-            == STATUS_CODES.INIT
-        ):
+        _engine_status = dbSessionsContainer._engine_status_tracker.engines.get(
+            self.engine_name
+        )
+
+        if (_engine_status is not None) and (_engine_status == STATUS_CODES.INIT):
             # reinit the session, this only requires invoking it like a function to modify in-place
             dbSessionsContainer._engine_status_tracker.engines[
                 self.engine_name
@@ -175,7 +221,7 @@ class EngineWrapper(object):
                 self.sa_session.info["request"] = request
                 self.sa_session.rollback()
                 # scoped sessions have a `session_factory`, but normal ones do not
-                self.sa_session.session_factory = self.sa_sessionmaker
+                self.sa_session.session_factory = self.sa_sessionmaker  # type: ignore[attr-defined]
         else:
             if __debug__:
                 log.debug(
@@ -184,7 +230,11 @@ class EngineWrapper(object):
                     self._session_repr,
                 )
 
-    def request_end(self, request, dbSessionsContainer=None):
+    def request_end(
+        self,
+        request: "Request",
+        dbSessionsContainer: Optional["DbSessionsContainer"] = None,
+    ) -> None:
         """
         This is called once per Engine, per Request.
 
@@ -226,7 +276,7 @@ class EngineWrapper(object):
         self.sa_engine.dispose()
 
 
-def reinit_engine(engine_name):
+def reinit_engine(engine_name: str) -> None:
     """
     Calls ``dispose`` on all registered engines, instructing SQLAlchemy to drop
     the connection pool and begin a new one.
@@ -245,18 +295,18 @@ def reinit_engine(engine_name):
 
 
 def initialize_engine(
-    engine_name,
-    sa_engine,
-    is_default=False,
-    use_zope=False,
-    sa_sessionmaker_params=None,
-    is_readonly=False,
-    is_scoped=True,
-    model_package=None,
-    reflect=False,
-    is_configure_mappers=True,
-    is_autocommit=None,
-):
+    engine_name: str,
+    sa_engine: "Engine",
+    is_default: bool = False,
+    use_zope: bool = False,
+    sa_sessionmaker_params: Optional[Dict] = None,
+    is_readonly: bool = False,
+    is_scoped: bool = True,
+    model_package: Optional[Type] = None,  # DEPRECATED
+    reflect: bool = False,  # DEPRECATED
+    is_configure_mappers: bool = True,
+    is_autocommit: Optional[bool] = None,
+) -> None:
     """
     Wraps each engine in an ``EngineWrapper``
     Registers each engine into the ``_ENGINE_REGISTRY``
@@ -274,15 +324,15 @@ def initialize_engine(
         `sqlalchemy.orm.configure_mappers`. Useful as a startup hook.
 
     # NOT WORKING
-    :param model_package: package. Pass in the model for inspection. *NOT CURRENTLY USED*
-    :param reflect: boolean.  Should we reflect?*NOT CURRENTLY USED*
+    :param model_package: package. Pass in the model for inspection. *DEPRECATED*
+    :param reflect: boolean.  Should we reflect? *DEPRECATED*
     """
     if __debug__:
         log.debug("initialize_engine(%s)", engine_name)
         log.info("Initializing Engine: %s", engine_name)
 
     # configure the engine around a wrapper
-    wrapped_engine = EngineWrapper(engine_name, sa_engine=sa_engine)
+    wrapped_engine = EngineWrapper(engine_name, sa_engine)
 
     # these are some defaults that i once used for writers
     # loggers would autocommit as true
@@ -328,15 +378,9 @@ def initialize_engine(
     # finally, reflect if needed
     if reflect:
         raise NotImplementedError
-        # tools.reflect_tables(model_package,
-        #                      primary=is_default,
-        #                      metadata=_metadata,
-        #                      engine_name=engine_name,
-        #                      sa_engine=sa_engine,
-        #                      )
 
 
-def get_wrapped_engine(name="!default"):
+def get_wrapped_engine(name: str = "!default") -> "EngineWrapper":
     """
     Retrieves an engine from the registry.
 
@@ -344,13 +388,16 @@ def get_wrapped_engine(name="!default"):
     """
     try:
         if name == "!default":
-            name = _ENGINE_REGISTRY["!default"]
+            _name = _ENGINE_REGISTRY["!default"]
+            if _name is None:
+                raise KeyError()
+            name = _name
         return _ENGINE_REGISTRY["engines"][name]
     except KeyError:
         raise RuntimeError("No engine '%s' was configured" % name)
 
 
-def get_session(engine_name):
+def get_session(engine_name: str) -> "_TYPES_SESSION":
     """
     Wraps get_wrapped_engine and returns the sa_session_scoped
 
@@ -360,7 +407,10 @@ def get_session(engine_name):
     return session
 
 
-def request_cleanup(request, dbSessionsContainer=None):
+def request_cleanup(
+    request: "Request",
+    dbSessionsContainer: Optional["DbSessionsContainer"] = None,
+) -> None:
     """
     Removes all our sessions from the stash.
 
@@ -376,7 +426,10 @@ def request_cleanup(request, dbSessionsContainer=None):
         _engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
 
 
-def _ensure_cleanup(request, dbSessionsContainer=None):
+def _ensure_cleanup(
+    request: "Request",
+    dbSessionsContainer: Optional["DbSessionsContainer"] = None,
+) -> None:
     """
     Ensures we have a cleanup action.
 
@@ -421,9 +474,9 @@ class DbSessionsContainer(object):
         when setting up an object, utilize dbSession.get_reader and memoize the reader connection
     """
 
-    _engine_status_tracker = None
+    _engine_status_tracker: "EngineStatusTracker"
 
-    def __init__(self, request):
+    def __init__(self, request: "Request"):
         """
         :param request: The active Pyramid `Request` instance.
         """
@@ -437,7 +490,7 @@ class DbSessionsContainer(object):
         # register our cleanup
         _ensure_cleanup(request, self)
 
-    def _get_initialized_session(self, engine_name):
+    def _get_initialized_session(self, engine_name: str) -> "_TYPES_SESSION":
         """
         :param engine_name: string. Name of the wrapped engine.
         """
@@ -449,7 +502,7 @@ class DbSessionsContainer(object):
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     @reify
-    def reader(self):
+    def reader(self) -> "_TYPES_SESSION":
         """
         database `reader` session.  memoized accessor.
         """
@@ -457,7 +510,7 @@ class DbSessionsContainer(object):
         return _session
 
     @reify
-    def writer(self):
+    def writer(self) -> "_TYPES_SESSION":
         """
         database `writer` session.  memoized accessor.
         """
@@ -465,7 +518,7 @@ class DbSessionsContainer(object):
         return _session
 
     @reify
-    def logger(self):
+    def logger(self) -> "_TYPES_SESSION":
         """
         database `logger` session.  memoized accessor.
         """
@@ -474,15 +527,15 @@ class DbSessionsContainer(object):
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    def get_reader(self):
+    def get_reader(self) -> "_TYPES_SESSION":
         """for lazy operations. function to "get" the ``reader``."""
         return self.reader
 
-    def get_writer(self):
+    def get_writer(self) -> "_TYPES_SESSION":
         """for lazy operations. function to "get" the ``writer``."""
         return self.writer
 
-    def get_logger(self):
+    def get_logger(self) -> "_TYPES_SESSION":
         """for lazy operations. function to "get" the ``logger``."""
         return self.logger
 
@@ -499,7 +552,7 @@ class DbSessionsContainer(object):
         """
         return self.get_any()
 
-    def get_any(self):
+    def get_any(self) -> "_TYPES_SESSION":
         """
         Get any of the standard database handles in `any_preferences` (default: reader, writer)
 
@@ -523,8 +576,10 @@ class DbSessionsContainer(object):
 
 
 def register_request_method(
-    config, request_method_name, dbContainerClass=DbSessionsContainer
-):
+    config: "Configurator",
+    request_method_name: str,
+    dbContainerClass=DbSessionsContainer,
+) -> None:
     """
     ``register_request_method`` invokes Pyramid's ``add_request_method`` and
     stashes some information to enable ``debugtoolbar`` support.
@@ -547,20 +602,20 @@ def register_request_method(
 # ==============================================================================
 
 __all__ = (
-    "SQLASSIST_DISABLE_TRANSACTION",
     "_ENGINE_REGISTRY",
-    "NAMING_CONVENTION",
+    "_ensure_cleanup",
     "_metadata",
+    "DbSessionsContainer",
     "DeclaredTable",
-    "STATUS_CODES",
     "EngineStatusTracker",
     "EngineWrapper",
-    "reinit_engine",
-    "initialize_engine",
-    "get_wrapped_engine",
     "get_session",
-    "request_cleanup",
-    "_ensure_cleanup",
-    "DbSessionsContainer",
+    "get_wrapped_engine",
+    "initialize_engine",
+    "NAMING_CONVENTION",
     "register_request_method",
+    "reinit_engine",
+    "request_cleanup",
+    "SQLASSIST_DISABLE_TRANSACTION",
+    "STATUS_CODES",
 )

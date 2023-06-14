@@ -2,7 +2,8 @@
 import sqlalchemy
 
 # local
-from pyramid_sqlassist import DeclaredTable, UtilityObject
+from pyramid_sqlassist import DeclaredTable
+from pyramid_sqlassist import UtilityObject
 
 
 # ==============================================================================

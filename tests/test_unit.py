@@ -11,7 +11,6 @@ from pyramid import testing
 from pyramid.interfaces import IRequestExtensions
 from pyramid.response import Response
 from pyramid.request import Request
-from pyramid_tm.tests import DummyDataManager
 
 # pypi
 import sqlalchemy
@@ -20,6 +19,7 @@ import sqlalchemy
 import pyramid_sqlassist
 from .pyramid_testapp import model
 from .pyramid_testapp.model import model_objects
+from ._utils import DummyDataManager
 
 
 # ==============================================================================
@@ -30,7 +30,6 @@ re_toolbar_link = re.compile(r'(?:href="http://localhost)(/_debug_toolbar/[\d]+)
 
 
 class _TestPyramidAppHarness(object):
-
     settings = {
         "mako.directories": ".",
         "sqlalchemy_reader.url": "sqlite://",
@@ -155,7 +154,6 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
 
 
 class _TestPyramidAppHarness_Transaction(_TestPyramidAppHarness):
-
     settings = {
         "mako.directories": ".",
         "sqlalchemy_reader.url": "sqlite://",
@@ -614,7 +612,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
         foo2 = (
             self.request.dbSession.writer.query(model_objects.FooObject)
             .filter(model_objects.FooObject.id == 2)
-            .options(sqlalchemy.orm.load_only("status"))
+            .options(sqlalchemy.orm.load_only(model_objects.FooObject.status))
             .first()
         )
         self.assertIsNotNone(foo2)
@@ -647,7 +645,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
         foo2 = (
             self.request.dbSession.writer.query(model_objects.FooObject)
             .filter(model_objects.FooObject.id == 2)
-            .options(sqlalchemy.orm.load_only("status"))
+            .options(sqlalchemy.orm.load_only(model_objects.FooObject.status))
             .first()
         )
         self.assertIsNotNone(foo2)
@@ -690,7 +688,6 @@ class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
         self.config.include("pyramid_debugtoolbar")
 
     def test_panel_injected(self):
-
         # create a view
         def empty_view(request):
             return Response(
@@ -728,7 +725,6 @@ class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
         self.assertIn("No connections were active on this `request`.", resp2.text)
 
     def test_panel_tracks(self):
-
         # create a view
         def empty_view(request):
             foo = request.dbSession.writer.query(
