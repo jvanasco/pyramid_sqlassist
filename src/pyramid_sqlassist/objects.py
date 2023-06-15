@@ -1,23 +1,34 @@
+# stdlib
 import logging
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import Union
 
-log = logging.getLogger(__name__)
-
+# pypi
 import sqlalchemy
-import sqlalchemy.sql
 from sqlalchemy.orm import class_mapper as sa_class_mapper
 from sqlalchemy.orm.session import object_session
+import sqlalchemy.sql
+
+if TYPE_CHECKING:
+    from pyramid.request import Request  # type: ignore[import]
+    from sqlalchemy.orm.session import Session
+
+# ==============================================================================
+
+
+log = logging.getLogger(__name__)
 
 # this is used a bit
 func_lower = sqlalchemy.sql.func.lower
 
 
-# ==============================================================================
-
-
 class CoreObject(object):
     """Core Database Object class/Mixin"""
 
-    __table_pkey__ = None
+    __table_pkey__: Optional[str] = None
 
 
 class UtilityObject(CoreObject):
@@ -31,7 +42,12 @@ class UtilityObject(CoreObject):
     """
 
     @classmethod
-    def get__by__id(cls, dbSession, id, id_column="id"):
+    def get__by__id(
+        cls,
+        dbSession: "Session",
+        id: Union[str, int],
+        id_column: str = "id",
+    ):
         """
         Classmethod.
 
@@ -41,7 +57,11 @@ class UtilityObject(CoreObject):
         :param id: The "id" of the object to query. Likely a String or Integer.
         :param id_column: The column hosting the identifier. Default: "id".
         """
-        if not hasattr(cls, id_column) and hasattr(cls, "__table_pkey__"):
+        if (
+            not hasattr(cls, id_column)
+            and hasattr(cls, "__table_pkey__")
+            and cls.__table_pkey__ is not None
+        ):
             id_column = cls.__table_pkey__
         id_col = getattr(cls, id_column)
         if isinstance(id, (list, tuple)):
@@ -52,7 +72,13 @@ class UtilityObject(CoreObject):
 
     @classmethod
     def get__by__column__lower(
-        cls, dbSession, column_name, search, allow_many=False, offset=0, limit=None
+        cls,
+        dbSession: "Session",
+        column_name: str,
+        search: str,
+        allow_many: bool = False,
+        offset: int = 0,
+        limit: Optional[int] = None,
     ):
         """
         Classmethod.
@@ -89,7 +115,13 @@ class UtilityObject(CoreObject):
 
     @classmethod
     def get__by__column__similar(
-        cls, dbSession, column_name, seed, prefix_only=True, offset=0, limit=None
+        cls,
+        dbSession: "Session",
+        column_name: str,
+        seed: str,
+        prefix_only: bool = True,
+        offset: int = 0,
+        limit: Optional[int] = None,
     ):
         """
         Classmethod.
@@ -121,7 +153,12 @@ class UtilityObject(CoreObject):
         return results
 
     @classmethod
-    def get__by__column__exact_then_ilike(cls, dbSession, column_name, seed):
+    def get__by__column__exact_then_ilike(
+        cls,
+        dbSession: "Session",
+        column_name: str,
+        seed: str,
+    ):
         """
         Classmethod.
 
@@ -144,14 +181,14 @@ class UtilityObject(CoreObject):
     @classmethod
     def get__range(
         cls,
-        dbSession,
-        offset=0,
-        limit=None,
-        sort_direction="asc",
-        order_col=None,
-        order_case_sensitive=True,
-        filters=None,
-        debug_query=False,
+        dbSession: "Session",
+        offset: int = 0,
+        limit: Optional[int] = None,
+        sort_direction: str = "asc",
+        order_col: Optional[str] = None,
+        order_case_sensitive: bool = True,
+        filters: Optional[Any] = None,  # `Any` is really a SqlAlchemy Clause
+        debug_query: bool = False,
     ):
         """
         Classmethod.
@@ -172,10 +209,10 @@ class UtilityObject(CoreObject):
         if filters:
             for _filter in filters:
                 query = query.filter(_filter)
-        for col in order_col.split(","):
+        for col_name in order_col.split(","):
             # declared columns do not have cls.__class__.c
             # reflected columns did in earlier sqlalchemy
-            col = getattr(cls, col)
+            col = getattr(cls, col_name)
             if sort_direction == "asc":
                 if order_case_sensitive:
                     query = query.order_by(col.asc())
@@ -197,7 +234,7 @@ class UtilityObject(CoreObject):
                 log.debug(results)
         return results
 
-    def columns_as_dict(self):
+    def columns_as_dict(self) -> Dict:
         """
         Beware!
         This function will trigger a load of attributes if they have not been
@@ -210,7 +247,7 @@ class UtilityObject(CoreObject):
             for col in sa_class_mapper(self.__class__).persist_selectable.c
         )
 
-    def loaded_columns_as_dict(self):
+    def loaded_columns_as_dict(self) -> Dict:
         """
         This function will only return the loaded columns as a dict.
 
@@ -226,7 +263,10 @@ class UtilityObject(CoreObject):
             if col.name in _dict
         }
 
-    def loaded_columns_as_list(self, with_values=False):
+    def loaded_columns_as_list(
+        self,
+        with_values: bool = False,
+    ) -> list:
         """
         This function will only return the loaded columns as a list.
 
@@ -252,7 +292,7 @@ class UtilityObject(CoreObject):
         ]
 
     @property
-    def _sqlalchemy_session(self):
+    def _sqlalchemy_session(self) -> Optional["Session"]:
         """
         Return the current SQLAlchemy Session for this object.
 
@@ -262,7 +302,7 @@ class UtilityObject(CoreObject):
         return session
 
     @property
-    def _pyramid_request(self):
+    def _pyramid_request(self) -> Optional["Request"]:
         """
         SQLAssist stashes the active Pyramid ``request`` in the SQLAlchemy
         Session's "info" dict as ``_session.info['request']``.
@@ -270,11 +310,17 @@ class UtilityObject(CoreObject):
         This should not be memoized, as an object can be merged across sessions.
         """
         session = object_session(self)
-        request = session.info["request"]
-        return request
+        if session:
+            request = session.info["request"]
+            return request
+        return None
 
 
 # ==============================================================================
 
 
-__all__ = ("func_lower", "CoreObject", "UtilityObject")
+__all__ = (
+    "CoreObject",
+    "func_lower",
+    "UtilityObject",
+)

@@ -1,12 +1,12 @@
+# stdlib
 import logging
 
-log = logging.getLogger(__name__)
-
-# local imports
-from .interface import *
-from .objects import *
+# local
+from .interface import *  # noqa: F401, F403
+from .objects import *  # noqa: F401, F403
 
 # ==============================================================================
 
+log = logging.getLogger(__name__)
 
-__VERSION__ = "0.14.2"
+__VERSION__ = "0.15.0"

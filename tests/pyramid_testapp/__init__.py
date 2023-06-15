@@ -42,7 +42,7 @@ def main(global_config, **settings):
         "sqlassist.use_zope": False,
         "sqlassist.is_scoped": False,
     }
-    for (k, v) in _setting_defaults.items():
+    for k, v in _setting_defaults.items():
         if k not in settings:
             log.debug('main: initialize `settings["%s"]` with default `%s`', k, v)
             settings[k] = v
