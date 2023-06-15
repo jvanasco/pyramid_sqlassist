@@ -23,11 +23,16 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
+        sqlalchemy-version: ["<2", ">=2"]
         include:
           # ubuntu-latest[22.04] does not have: py27, py36
+          # include syntax doesn't like arrays
           - os: "ubuntu-20.04"
             python-version: "3.6"
-        sqlalchemy-version: ["<2", ">=2"]
+            sqlalchemy-version: "<2"
+          - os: "ubuntu-20.04"
+            python-version: "3.6"
+            sqlalchemy-version: ">=2"
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
