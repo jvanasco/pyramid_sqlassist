@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from typing import Union
 
 # pypi
-from pyramid.decorator import reify  # type: ignore[import]
+from pyramid.decorator import reify
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
@@ -34,13 +34,13 @@ if SQLASSIST_DISABLE_TRANSACTION:
     transaction = None
     zope_register = None
 else:
-    import transaction  # type: ignore[import,no-redef]  # noqa: F401
-    from zope.sqlalchemy import register as zope_register  # type: ignore[import,no-redef]
+    import transaction  # type: ignore[no-redef]  # noqa: F401
+    from zope.sqlalchemy import register as zope_register  # type: ignore[no-redef]
 
 
 if TYPE_CHECKING:
-    from pyramid.config import Configurator  # type: ignore[import]
-    from pyramid.request import Request  # type: ignore[import]
+    from pyramid.config import Configurator
+    from pyramid.request import Request
     from sqlalchemy.engine.base import Engine
     from sqlalchemy.orm.session import Session
 

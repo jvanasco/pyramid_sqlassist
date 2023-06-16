@@ -13,7 +13,7 @@ from sqlalchemy.orm.session import object_session
 import sqlalchemy.sql
 
 if TYPE_CHECKING:
-    from pyramid.request import Request  # type: ignore[import]
+    from pyramid.request import Request
     from sqlalchemy.orm.session import Session
 
 # ==============================================================================

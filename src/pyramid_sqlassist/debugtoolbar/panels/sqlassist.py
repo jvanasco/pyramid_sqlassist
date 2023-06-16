@@ -2,11 +2,11 @@
 from typing import TYPE_CHECKING
 
 # pypi
-from pyramid_debugtoolbar.panels import DebugPanel  # type: ignore[import]
+from pyramid_debugtoolbar.panels import DebugPanel
 
 # typing
 if TYPE_CHECKING:
-    from pyramid.request import Request  # type: ignore[import]
+    from pyramid.request import Request
 
 # ==============================================================================
 
