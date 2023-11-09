@@ -1,6 +1,7 @@
 # stdlib
 import logging
 import os
+from types import ModuleType
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -302,7 +303,7 @@ def initialize_engine(
     sa_sessionmaker_params: Optional[Dict] = None,
     is_readonly: bool = False,
     is_scoped: bool = True,
-    model_package: Optional[Type] = None,  # DEPRECATED
+    model_package: Optional[ModuleType] = None,  # DEPRECATED
     reflect: bool = False,  # DEPRECATED
     is_configure_mappers: bool = True,
     is_autocommit: Optional[bool] = None,

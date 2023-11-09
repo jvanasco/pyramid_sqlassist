@@ -1,3 +1,6 @@
+0.15.1
+    * mypy fix
+
 0.15
     * mypy support
     * drop py2-py35
