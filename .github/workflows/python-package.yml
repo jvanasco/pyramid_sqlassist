@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    name: core-tests--py-${{ matrix.python-version }}--sqla-${{ matrix.sqlalchemy-version }}--${{ matrix.os }}
+    name: core-tests--py-${{ matrix.python-version }}--${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
