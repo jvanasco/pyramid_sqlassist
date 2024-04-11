@@ -102,7 +102,7 @@ class UtilityObject(CoreObject):
         ):
             id_column = cls.__table_pkey__
         id_col = getattr(cls, id_column)
-        return dbSession.query(cls).filter(id_col.in_(id)).all()
+        return dbSession.query(cls).filter(id_col.in_(ids)).all()
 
     @classmethod
     def get__by__column__lower(
