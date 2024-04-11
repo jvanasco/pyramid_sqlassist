@@ -2,15 +2,19 @@
 import logging
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
 # pypi
 import sqlalchemy
 from sqlalchemy.orm import class_mapper as sa_class_mapper
+from sqlalchemy.orm import Mapped
 from sqlalchemy.orm.session import object_session
 import sqlalchemy.sql
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from pyramid.request import Request
@@ -41,13 +45,16 @@ class UtilityObject(CoreObject):
     off of the requisite columns.
     """
 
+    if TYPE_CHECKING and False:
+        id: Mapped[int]
+
     @classmethod
     def get__by__id(
         cls,
         dbSession: "Session",
         id: Union[str, int],
         id_column: str = "id",
-    ):
+    ) -> Optional[Self]:
         """
         Classmethod.
 
@@ -63,12 +70,39 @@ class UtilityObject(CoreObject):
             and cls.__table_pkey__ is not None
         ):
             id_column = cls.__table_pkey__
-        id_col = getattr(cls, id_column)
         if isinstance(id, (list, tuple)):
-            return dbSession.query(cls).filter(id_col.in_(id)).all()
-        else:
-            id_dict = {id_column: id}
-            return dbSession.query(cls).filter_by(**id_dict).first()
+            raise ValueError(
+                "Submitting a list/tuple to `get__by__id` is deprecated. "
+                "Please use `get__by__ids` instead."
+            )
+
+        id_dict = {id_column: id}
+        return dbSession.query(cls).filter_by(**id_dict).first()
+
+    @classmethod
+    def get__by__ids(
+        cls,
+        dbSession: "Session",
+        ids: Union[List[Union[str, int]], Tuple[Union[str, int]]],
+        id_column: str = "id",
+    ) -> Optional[List[Self]]:
+        """
+        Classmethod.
+
+        Gets items by an id column named 'id'.  id column can be overriden.
+
+        :param dbSession: The SQLAlchemy ``Session`` to query.
+        :param ids: The "id" of the object to query. Likely a String or Integer.
+        :param id_column: The column hosting the identifier. Default: "id".
+        """
+        if (
+            not hasattr(cls, id_column)
+            and hasattr(cls, "__table_pkey__")
+            and cls.__table_pkey__ is not None
+        ):
+            id_column = cls.__table_pkey__
+        id_col = getattr(cls, id_column)
+        return dbSession.query(cls).filter(id_col.in_(id)).all()
 
     @classmethod
     def get__by__column__lower(
@@ -79,7 +113,7 @@ class UtilityObject(CoreObject):
         allow_many: bool = False,
         offset: int = 0,
         limit: Optional[int] = None,
-    ):
+    ) -> Union[None, Self, List[Self]]:
         """
         Classmethod.
 
@@ -122,7 +156,7 @@ class UtilityObject(CoreObject):
         prefix_only: bool = True,
         offset: int = 0,
         limit: Optional[int] = None,
-    ):
+    ) -> List[Self]:
         """
         Classmethod.
 
@@ -158,7 +192,7 @@ class UtilityObject(CoreObject):
         dbSession: "Session",
         column_name: str,
         seed: str,
-    ):
+    ) -> Optional[Self]:
         """
         Classmethod.
 
@@ -189,7 +223,7 @@ class UtilityObject(CoreObject):
         order_case_sensitive: bool = True,
         filters: Optional[Any] = None,  # `Any` is really a SqlAlchemy Clause
         debug_query: bool = False,
-    ):
+    ) -> List[Self]:
         """
         Classmethod.
 
@@ -266,7 +300,7 @@ class UtilityObject(CoreObject):
     def loaded_columns_as_list(
         self,
         with_values: bool = False,
-    ) -> list:
+    ) -> List:
         """
         This function will only return the loaded columns as a list.
 

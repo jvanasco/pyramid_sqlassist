@@ -6,7 +6,6 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Optional
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -28,7 +27,7 @@ log = logging.getLogger(__name__)
 # otherwise, the library assumes ``transaction`` is desired and will attempt
 # to load the package, potentially raising exceptions.
 SQLASSIST_DISABLE_TRANSACTION = int(os.environ.get("SQLASSIST_DISABLE_TRANSACTION", 0))
-transaction: Optional[Type]
+transaction: Optional[ModuleType]
 zope_register: Optional[Callable]
 if SQLASSIST_DISABLE_TRANSACTION:
     log.info("pyramid_sqlassist: transaction imports disabled")
@@ -140,12 +139,12 @@ class EngineWrapper(object):
         self,
         is_scoped: bool,
         sa_sessionmaker_params: Dict,
-        use_zope: Optional[bool] = None,
+        use_zope: bool = False,
     ):
         """
         :param is_scoped: boolean.
         :param sa_sessionmaker_params: dict. Passed as-is to ``sqlalchemy.orm.sessionmaker()``
-        :param use_zope: boolean. optional. Default ``None``.
+        :param use_zope: boolean. optional. Default ``False``.
         """
         if __debug__:
             log.debug("EngineWrapper.init_sessionmaker()")
@@ -440,7 +439,7 @@ def _ensure_cleanup(
     if request_cleanup not in request.finished_callbacks:
         if dbSessionsContainer is not None:
 
-            def f_cleanup(req):
+            def f_cleanup(req: "Request"):
                 request_cleanup(req, dbSessionsContainer=dbSessionsContainer)
 
             request.add_finished_callback(f_cleanup)
@@ -476,6 +475,7 @@ class DbSessionsContainer(object):
     """
 
     _engine_status_tracker: "EngineStatusTracker"
+    _request: "Request"
 
     def __init__(self, request: "Request"):
         """

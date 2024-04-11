@@ -1,5 +1,5 @@
 0.15.1
-    * mypy fix
+    * mypy fixes
 
 0.15
     * mypy support
