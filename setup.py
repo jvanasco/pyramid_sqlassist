@@ -19,7 +19,7 @@ with open(os.path.join(HERE, "README.md")) as fp:
     long_description = fp.read()
 
 requires = [
-    "SQLAlchemy",
+    "SQLAlchemy>=2.0",
     "pyramid",
     "typing_extensions",  # required for <py3.8, TypedDict
 ]
@@ -45,7 +45,6 @@ setup(
         "Intended Audience :: Developers",
         "Framework :: Pyramid",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

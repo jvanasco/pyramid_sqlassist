@@ -19,6 +19,8 @@ PRs are always appreciated.
 
 Recent changes:
 
+With `v0.16.0`, SQLAlchemy 2.0 and Python 3.7 are required.
+
 With `v0.13.0`, SQLAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
 
 With `v0.12.0`, there have been some API changes and the introduction of a
@@ -359,7 +361,8 @@ to grab an exception:
 If you inherit from this class, your SQLAlchemy objects have some convenience
 methods:
 
-* `get__by__id`( self, dbSession, id , id_column='id' ):
+* `get__by__id`( self, dbSession, id_ , id_column='id' ):
+* `get__by__ids`( self, dbSession, ids , id_column='id' ):
 * `get__by__column__lower`( self, dbSession, column_name , search , allow_many=False ):
 * `get__by__column__similar`( self, dbSession , column_name , seed , prefix_only=True):
 * `get__by__column__exact_then_ilike`( self, dbSession, column_name, seed ):
