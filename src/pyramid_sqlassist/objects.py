@@ -83,7 +83,11 @@ class UtilityObject(CoreObject):
     def get__by__ids(
         cls,
         dbSession: "Session",
-        ids: Union[List[Union[str, int]], Tuple[Union[str, int]]],
+        ids: Union[
+            List[Union[int, str]],
+            Tuple[int, ...],
+            Tuple[str, ...],
+        ],
         id_column: str = "id",
     ) -> Optional[List[Self]]:
         """

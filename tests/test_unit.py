@@ -1,22 +1,19 @@
 # stdlib
-import pdb
 import re
 import unittest
 
-# pyramid testing requirements
+# pypi
 from pyramid import testing
 from pyramid.interfaces import IRequestExtensions
-from pyramid.response import Response
 from pyramid.request import Request
-
-# pypi
+from pyramid.response import Response
 import sqlalchemy
 
 # local
 import pyramid_sqlassist
+from ._utils import DummyDataManager
 from .pyramid_testapp import model
 from .pyramid_testapp.model import model_objects
-from ._utils import DummyDataManager
 
 
 # ==============================================================================
@@ -104,9 +101,9 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
     def test_query_reader(self):
         self.assertNotIn("finished_callbacks", self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.reader.query(
+        touched = self.request.dbSession.reader.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
+        ).first()
         self.assertEqual(
             1, self.request.dbSession._engine_status_tracker.engines["reader"]
         )
@@ -118,9 +115,9 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
     def test_query_writer(self):
         self.assertNotIn("finished_callbacks", self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.writer.query(
+        touched = self.request.dbSession.writer.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
+        ).first()
         self.assertEqual(
             0, self.request.dbSession._engine_status_tracker.engines["reader"]
         )
@@ -132,12 +129,12 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
     def test_query_mixed(self):
         self.assertNotIn("finished_callbacks", self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.reader.query(
+        touched = self.request.dbSession.reader.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
-        touched = self.request.dbSession.writer.query(
+        ).first()
+        touched = self.request.dbSession.writer.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
+        ).first()
         self.assertEqual(
             1, self.request.dbSession._engine_status_tracker.engines["reader"]
         )
@@ -260,9 +257,9 @@ class TestPyramidTm(unittest.TestCase):
         # create a view
         def empty_view(request):
             dm.bind(request.tm)
-            foo = request.dbSession.writer.query(
+            foo = request.dbSession.writer.query(  # noqa
                 model_objects.FooObject
-            ).first()  # noqa
+            ).first()
             return Response(
                 "<html><head></head><body>OK</body></html>", content_type="text/html"
             )
@@ -286,9 +283,9 @@ class TestPyramidTm(unittest.TestCase):
         # create a view
         def empty_view(request):
             dm.bind(request.tm)
-            foo = request.dbSession.writer.query(
+            foo = request.dbSession.writer.query(  # noqa
                 model_objects.FooObject
-            ).first()  # noqa
+            ).first()
             raise ValueError
 
         self.config.add_view(empty_view)
@@ -644,7 +641,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
         _expected_column_names = [
             "id",
             "status",
-        ]  #  sqlalchemy upgrades the query to use the fkey "id"
+        ]  # sqlalchemy upgrades the query to use the fkey "id"
         self.assertSequenceEqual(sorted(as_dict.keys()), sorted(_expected_column_names))
 
     def test__loaded_columns_as_list(self):
@@ -750,9 +747,9 @@ class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
     def test_panel_tracks(self):
         # create a view
         def empty_view(request):
-            foo = request.dbSession.writer.query(
+            foo = request.dbSession.writer.query(  # noqa
                 model_objects.FooObject
-            ).first()  # noqa
+            ).first()
             return Response(
                 "<html><head></head><body>OK</body></html>", content_type="text/html"
             )
