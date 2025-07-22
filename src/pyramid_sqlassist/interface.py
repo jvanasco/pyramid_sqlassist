@@ -6,6 +6,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Optional
+from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -44,7 +45,10 @@ if TYPE_CHECKING:
     from sqlalchemy.engine.base import Engine
     from sqlalchemy.orm.session import Session
 
-    _TYPES_SESSION = Union[Session, scoped_session[Any], None]
+    _TYPES_SESSION = Union[Session, scoped_session[Any]]
+    _TYPES_SESSION_ALT = Union[
+        Type[Session], scoped_session[Any], sessionmaker[Session]
+    ]
 
 
 # ------------------------------------------------------------------------------
@@ -207,9 +211,9 @@ class EngineWrapper(object):
 
         if (_engine_status is not None) and (_engine_status == STATUS_CODES.INIT):
             # reinit the session, this only requires invoking it like a function to modify in-place
-            dbSessionsContainer._engine_status_tracker.engines[
-                self.engine_name
-            ] = STATUS_CODES.START
+            dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
+                STATUS_CODES.START
+            )
             if self.is_scoped:
                 self.sa_session_scoped()
                 # stash the active Pyramid `request` into the SQLAlchemy "info" dict.
@@ -258,9 +262,9 @@ class EngineWrapper(object):
                 ):
                     # we only initialized the containiner. no need to call the SQLAlchemy internals
                     return
-                dbSessionsContainer._engine_status_tracker.engines[
-                    self.engine_name
-                ] = STATUS_CODES.END
+                dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
+                    STATUS_CODES.END
+                )
 
         # remove no matter what
         if self.is_scoped:
