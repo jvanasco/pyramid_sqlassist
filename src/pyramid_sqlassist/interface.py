@@ -13,10 +13,16 @@ from typing import Union
 # pypi
 from pyramid.decorator import reify
 import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    from pyramid.config import Configurator
+    from pyramid.request import Request
+    from sqlalchemy.engine.base import Engine
+    from sqlalchemy.orm.session import Session
 
 # ==============================================================================
 
@@ -38,17 +44,15 @@ else:
     import transaction  # type: ignore[no-redef]  # noqa: F401
     from zope.sqlalchemy import register as zope_register  # type: ignore[no-redef]
 
-
-if TYPE_CHECKING:
-    from pyramid.config import Configurator
-    from pyramid.request import Request
-    from sqlalchemy.engine.base import Engine
-    from sqlalchemy.orm.session import Session
-
-    _TYPES_SESSION = Union[Session, scoped_session[Any]]
-    _TYPES_SESSION_ALT = Union[
-        Type[Session], scoped_session[Any], sessionmaker[Session]
-    ]
+TYPES_SESSION = Union[
+    "Session",
+    scoped_session[Any],
+]
+TYPES_SESSION_ALT = Union[
+    Type["Session"],
+    scoped_session[Any],
+    sessionmaker["Session"],
+]
 
 
 # ------------------------------------------------------------------------------
@@ -171,7 +175,7 @@ class EngineWrapper(object):
             self.sa_session = sa_sessionmaker()
 
     @property
-    def session(self) -> "_TYPES_SESSION":
+    def session(self) -> "TYPES_SESSION":
         """accessor property for sessions"""
         if self.is_scoped:
             return self.sa_session_scoped
@@ -401,7 +405,7 @@ def get_wrapped_engine(name: str = "!default") -> "EngineWrapper":
         raise RuntimeError("No engine '%s' was configured" % name)
 
 
-def get_session(engine_name: str) -> "_TYPES_SESSION":
+def get_session(engine_name: str) -> "TYPES_SESSION":
     """
     Wraps get_wrapped_engine and returns the sa_session_scoped
 
@@ -495,7 +499,7 @@ class DbSessionsContainer(object):
         # register our cleanup
         _ensure_cleanup(request, self)
 
-    def _get_initialized_session(self, engine_name: str) -> "_TYPES_SESSION":
+    def _get_initialized_session(self, engine_name: str) -> "TYPES_SESSION":
         """
         :param engine_name: string. Name of the wrapped engine.
         """
@@ -507,7 +511,7 @@ class DbSessionsContainer(object):
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     @reify
-    def reader(self) -> "_TYPES_SESSION":
+    def reader(self) -> "TYPES_SESSION":
         """
         database `reader` session.  memoized accessor.
         """
@@ -515,7 +519,7 @@ class DbSessionsContainer(object):
         return _session
 
     @reify
-    def writer(self) -> "_TYPES_SESSION":
+    def writer(self) -> "TYPES_SESSION":
         """
         database `writer` session.  memoized accessor.
         """
@@ -523,7 +527,7 @@ class DbSessionsContainer(object):
         return _session
 
     @reify
-    def logger(self) -> "_TYPES_SESSION":
+    def logger(self) -> "TYPES_SESSION":
         """
         database `logger` session.  memoized accessor.
         """
@@ -532,15 +536,15 @@ class DbSessionsContainer(object):
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    def get_reader(self) -> "_TYPES_SESSION":
+    def get_reader(self) -> "TYPES_SESSION":
         """for lazy operations. function to "get" the ``reader``."""
         return self.reader
 
-    def get_writer(self) -> "_TYPES_SESSION":
+    def get_writer(self) -> "TYPES_SESSION":
         """for lazy operations. function to "get" the ``writer``."""
         return self.writer
 
-    def get_logger(self) -> "_TYPES_SESSION":
+    def get_logger(self) -> "TYPES_SESSION":
         """for lazy operations. function to "get" the ``logger``."""
         return self.logger
 
@@ -557,7 +561,7 @@ class DbSessionsContainer(object):
         """
         return self.get_any()
 
-    def get_any(self) -> "_TYPES_SESSION":
+    def get_any(self) -> "TYPES_SESSION":
         """
         Get any of the standard database handles in `any_preferences` (default: reader, writer)
 

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 # local
 from .panels.sqlassist import PyramidSqlAssistDebugPanel
 
-# typing
 if TYPE_CHECKING:
     from pyramid.config import Configurator
 
