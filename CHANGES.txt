@@ -1,8 +1,11 @@
 0.16.0
-    * mypy fixes
     * drop py36
     * drop sqlalchemy<2
-    
+    * add py312/py313
+    * packaging fixes
+    * mypy fixes
+    * typing fixes
+
 0.15.0
     * mypy support
     * drop py2-py35
