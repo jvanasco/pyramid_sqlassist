@@ -1,7 +1,4 @@
-from __future__ import print_function
-
 # stdlib
-import pdb
 import unittest
 
 # pypi

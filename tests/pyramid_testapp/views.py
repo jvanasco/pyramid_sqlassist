@@ -1,28 +1,22 @@
-from __future__ import print_function
-
-
-import logging
-
-log = logging.getLogger(__name__)
-
 """
 fake app for tests
 """
 # stdlib
-import pdb
-
-# pyramid
-from pyramid.view import view_config
+import logging
 
 # pypi
-from pyramid_sqlassist import DbSessionsContainer
-from sqlalchemy.orm.session import Session as SqlalchemySession
+from pyramid.view import view_config
 from sqlalchemy.orm.scoping import scoped_session as scoped_session
+from sqlalchemy.orm.session import Session as SqlalchemySession
 
 # local
+from pyramid_sqlassist import DbSessionsContainer
 from .model.model_objects import FooObject
 
 # ==============================================================================
+
+# Logging
+log = logging.getLogger(__name__)
 
 
 class Handler(object):

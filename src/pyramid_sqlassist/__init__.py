@@ -9,4 +9,4 @@ from .objects import *  # noqa: F401, F403
 
 log = logging.getLogger(__name__)
 
-__VERSION__ = "0.15.0"
+__VERSION__ = "0.16.0"

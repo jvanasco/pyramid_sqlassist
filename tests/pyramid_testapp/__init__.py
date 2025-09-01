@@ -1,22 +1,20 @@
 """
 fake app for tests
 """
+# stdlib
 import logging
 
-log = logging.getLogger(__name__)
-
-# stdlib
-
-# pyramid
-from pyramid.config import Configurator
-
 # pypi
+from pyramid.config import Configurator
 
 # local
 from . import model
 
 
 # ==============================================================================
+
+# logging
+log = logging.getLogger(__name__)
 
 
 class AttribSafeContextObj(object):

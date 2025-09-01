@@ -1,25 +1,19 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-
 # stdlib
-import pdb
 import re
 import unittest
 
-# pyramid testing requirements
+# pypi
 from pyramid import testing
 from pyramid.interfaces import IRequestExtensions
-from pyramid.response import Response
 from pyramid.request import Request
-
-# pypi
+from pyramid.response import Response
 import sqlalchemy
 
 # local
 import pyramid_sqlassist
+from ._utils import DummyDataManager
 from .pyramid_testapp import model
 from .pyramid_testapp.model import model_objects
-from ._utils import DummyDataManager
 
 
 # ==============================================================================
@@ -51,8 +45,8 @@ class _TestPyramidAppHarness(object):
             engine_reader,
             is_default=False,
             model_package=model_objects,
-            use_zope=self.settings.get("sqlassist.use_zope"),
-            is_scoped=self.settings.get("sqlassist.is_scoped"),
+            use_zope=bool(self.settings.get("sqlassist.use_zope")),
+            is_scoped=bool(self.settings.get("sqlassist.is_scoped")),
         )
 
         engine_writer = sqlalchemy.engine_from_config(
@@ -63,8 +57,8 @@ class _TestPyramidAppHarness(object):
             engine_writer,
             is_default=False,
             model_package=model_objects,
-            use_zope=self.settings.get("sqlassist.use_zope"),
-            is_scoped=self.settings.get("sqlassist.is_scoped"),
+            use_zope=bool(self.settings.get("sqlassist.use_zope")),
+            is_scoped=bool(self.settings.get("sqlassist.is_scoped")),
         )
         pyramid_sqlassist.register_request_method(self.config, "dbSession")
 
@@ -107,9 +101,9 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
     def test_query_reader(self):
         self.assertNotIn("finished_callbacks", self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.reader.query(
+        touched = self.request.dbSession.reader.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
+        ).first()
         self.assertEqual(
             1, self.request.dbSession._engine_status_tracker.engines["reader"]
         )
@@ -121,9 +115,9 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
     def test_query_writer(self):
         self.assertNotIn("finished_callbacks", self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.writer.query(
+        touched = self.request.dbSession.writer.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
+        ).first()
         self.assertEqual(
             0, self.request.dbSession._engine_status_tracker.engines["reader"]
         )
@@ -135,12 +129,12 @@ class TestPyramidRequest(_TestPyramidAppHarness, unittest.TestCase):
     def test_query_mixed(self):
         self.assertNotIn("finished_callbacks", self.request.__dict__)
         self.request.dbSession = pyramid_sqlassist.DbSessionsContainer(self.request)
-        touched = self.request.dbSession.reader.query(
+        touched = self.request.dbSession.reader.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
-        touched = self.request.dbSession.writer.query(
+        ).first()
+        touched = self.request.dbSession.writer.query(  # noqa
             model_objects.FooObject
-        ).first()  # noqa
+        ).first()
         self.assertEqual(
             1, self.request.dbSession._engine_status_tracker.engines["reader"]
         )
@@ -202,8 +196,8 @@ class TestPyramidTm(unittest.TestCase):
             engine_reader,
             is_default=False,
             model_package=model_objects,
-            use_zope=settings.get("sqlassist.use_zope"),
-            is_scoped=settings.get("sqlassist.is_scoped"),
+            use_zope=bool(settings.get("sqlassist.use_zope")),
+            is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
         engine_writer = sqlalchemy.engine_from_config(
             settings, prefix="sqlalchemy_writer."
@@ -213,8 +207,8 @@ class TestPyramidTm(unittest.TestCase):
             engine_writer,
             is_default=False,
             model_package=model_objects,
-            use_zope=settings.get("sqlassist.use_zope"),
-            is_scoped=settings.get("sqlassist.is_scoped"),
+            use_zope=bool(settings.get("sqlassist.use_zope")),
+            is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
         pyramid_sqlassist.register_request_method(self.config, "dbSession")
 
@@ -263,9 +257,9 @@ class TestPyramidTm(unittest.TestCase):
         # create a view
         def empty_view(request):
             dm.bind(request.tm)
-            foo = request.dbSession.writer.query(
+            foo = request.dbSession.writer.query(  # noqa
                 model_objects.FooObject
-            ).first()  # noqa
+            ).first()
             return Response(
                 "<html><head></head><body>OK</body></html>", content_type="text/html"
             )
@@ -289,9 +283,9 @@ class TestPyramidTm(unittest.TestCase):
         # create a view
         def empty_view(request):
             dm.bind(request.tm)
-            foo = request.dbSession.writer.query(
+            foo = request.dbSession.writer.query(  # noqa
                 model_objects.FooObject
-            ).first()  # noqa
+            ).first()
             raise ValueError
 
         self.config.add_view(empty_view)
@@ -330,8 +324,8 @@ class TestInitializeEngine(unittest.TestCase):
                 engine_reader,
                 is_default=False,
                 model_package=model_objects,
-                use_zope=settings.get("sqlassist.use_zope"),
-                is_scoped=settings.get("sqlassist.is_scoped"),
+                use_zope=bool(settings.get("sqlassist.use_zope")),
+                is_scoped=bool(settings.get("sqlassist.is_scoped")),
             )
         self.assertEqual(
             cm.exception.args[0], "`zope.sqlalchemy` requires scoped sessions"
@@ -352,8 +346,8 @@ class TestInitializeEngine(unittest.TestCase):
             is_default=False,
             model_package=model_objects,
             sa_sessionmaker_params={},
-            use_zope=settings.get("sqlassist.use_zope"),
-            is_scoped=settings.get("sqlassist.is_scoped"),
+            use_zope=bool(settings.get("sqlassist.use_zope")),
+            is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
 
     def test_zope_sessionmaker_params__fail(self):
@@ -372,8 +366,8 @@ class TestInitializeEngine(unittest.TestCase):
                 is_default=False,
                 model_package=model_objects,
                 sa_sessionmaker_params={"extension": "foo"},
-                use_zope=settings.get("sqlassist.use_zope"),
-                is_scoped=settings.get("sqlassist.is_scoped"),
+                use_zope=bool(settings.get("sqlassist.use_zope")),
+                is_scoped=bool(settings.get("sqlassist.is_scoped")),
             )
         self.assertEqual(
             cm.exception.args[0],
@@ -394,8 +388,8 @@ class TestInitializeEngine(unittest.TestCase):
             engine_reader,
             is_default=False,
             model_package=model_objects,
-            use_zope=settings.get("sqlassist.use_zope"),
-            is_scoped=settings.get("sqlassist.is_scoped"),
+            use_zope=bool(settings.get("sqlassist.use_zope")),
+            is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
 
     def test_no_zope_is_scoped__pass(self):
@@ -412,8 +406,8 @@ class TestInitializeEngine(unittest.TestCase):
             engine_reader,
             is_default=False,
             model_package=model_objects,
-            use_zope=settings.get("sqlassist.use_zope"),
-            is_scoped=settings.get("sqlassist.is_scoped"),
+            use_zope=bool(settings.get("sqlassist.use_zope")),
+            is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
 
     def test_no_zope_not_scoped__pass(self):
@@ -430,8 +424,8 @@ class TestInitializeEngine(unittest.TestCase):
             engine_reader,
             is_default=False,
             model_package=model_objects,
-            use_zope=settings.get("sqlassist.use_zope"),
-            is_scoped=settings.get("sqlassist.is_scoped"),
+            use_zope=bool(settings.get("sqlassist.use_zope")),
+            is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
 
 
@@ -444,13 +438,15 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
     def test__get__by__id(self):
         foo = model_objects.FooObject.get__by__id(self.request.dbSession.writer, 1)
         self.assertIsNotNone(foo)
+        assert foo is not None  # mypy
         self.assertEqual(foo.id, 1)
 
         _query_ids = (1, 2, 3)
-        foos = model_objects.FooObject.get__by__id(
+        foos = model_objects.FooObject.get__by__ids(
             self.request.dbSession.writer, _query_ids
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 3)
         self.assertSequenceEqual([i.id for i in foos], _query_ids)
 
@@ -458,14 +454,16 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, 11, id_column="id_alt"
         )
         self.assertIsNotNone(foo_alt)
+        assert foo_alt is not None  # mypy
         self.assertEqual(foo_alt.id, 1)
         self.assertEqual(foo_alt.id_alt, 11)
 
         _query_ids_alt = (11, 12, 13)
-        foos_alt = model_objects.FooObject.get__by__id(
+        foos_alt = model_objects.FooObject.get__by__ids(
             self.request.dbSession.writer, _query_ids_alt, id_column="id_alt"
         )
         self.assertIsInstance(foos_alt, list)
+        assert foos_alt is not None  # mypy
         self.assertEqual(len(foos_alt), 3)
         self.assertSequenceEqual([i.id_alt for i in foos], _query_ids_alt)
 
@@ -481,19 +479,26 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, "status", "AAAAA", allow_many=True
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (1, 2))
 
+        # default: allow_many=False
         foo_alt = model_objects.FooObject.get__by__column__lower(
             self.request.dbSession.writer, "status", "BBBBB"
         )
         self.assertIsNotNone(foo_alt)
+        assert foo_alt is not None  # mypy
+        assert not isinstance(foo_alt, list)  # mypy
         self.assertEqual(foo_alt.id, 3)
 
+        # default: allow_many=False
         foo_alt2 = model_objects.FooObject.get__by__column__lower(
             self.request.dbSession.writer, "status", "CCCCC"
         )
         self.assertIsNotNone(foo_alt2)
+        assert foo_alt2 is not None  # mypy
+        assert not isinstance(foo_alt2, list)  # mypy
         self.assertEqual(foo_alt2.id, 4)
 
     def test__get__by__column__similar(self):
@@ -501,6 +506,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, "status", "A", prefix_only=True
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (1, 2))
 
@@ -508,6 +514,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, "status_alt", "D", prefix_only=True
         )
         self.assertIsInstance(foos2, list)
+        assert foos2 is not None  # mypy
         self.assertEqual(len(foos2), 1)
         self.assertEqual(foos2[0].id, 3)
 
@@ -515,6 +522,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, "status_alt", "D", prefix_only=False
         )
         self.assertIsInstance(foos3, list)
+        assert foos3 is not None  # mypy
         self.assertEqual(len(foos3), 2)
         self.assertSequenceEqual([i.id for i in foos3], (3, 4))
 
@@ -523,36 +531,42 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, "status", "AAAAA"
         )
         self.assertIsNotNone(foo1)
+        assert foo1 is not None  # mypy
         self.assertEqual(foo1.id, 1)
 
         foo2 = model_objects.FooObject.get__by__column__exact_then_ilike(
             self.request.dbSession.writer, "status", "aaaaa"
         )
         self.assertIsNotNone(foo2)
+        assert foo2 is not None  # mypy
         self.assertEqual(foo2.id, 2)
 
         foo3 = model_objects.FooObject.get__by__column__exact_then_ilike(
             self.request.dbSession.writer, "status", "BBBBB"
         )
         self.assertIsNotNone(foo3)
+        assert foo3 is not None  # mypy
         self.assertEqual(foo3.id, 3)
 
         foo3b = model_objects.FooObject.get__by__column__exact_then_ilike(
             self.request.dbSession.writer, "status", "bbbbb"
         )
         self.assertIsNotNone(foo3b)
+        assert foo3b is not None  # mypy
         self.assertEqual(foo3b.id, 3)
 
     def test__get__range(self):
         # get them all
         foos = model_objects.FooObject.get__range(self.request.dbSession.writer)
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 4)
 
         foos = model_objects.FooObject.get__range(
             self.request.dbSession.writer, limit=2
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (1, 2))
 
@@ -560,6 +574,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, limit=2, sort_direction="desc"
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (4, 3))
 
@@ -567,6 +582,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, offset=1, limit=2
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (2, 3))
 
@@ -574,6 +590,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, offset=1, limit=2, sort_direction="desc"
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (3, 2))
 
@@ -581,6 +598,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             self.request.dbSession.writer, limit=2, order_col="status"
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (1, 3))
 
@@ -591,6 +609,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
             order_case_sensitive=False,
         )
         self.assertIsInstance(foos, list)
+        assert foos is not None  # mypy
         self.assertEqual(len(foos), 2)
         self.assertSequenceEqual([i.id for i in foos], (1, 2))
 
@@ -622,7 +641,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
         _expected_column_names = [
             "id",
             "status",
-        ]  #  sqlalchemy upgrades the query to use the fkey "id"
+        ]  # sqlalchemy upgrades the query to use the fkey "id"
         self.assertSequenceEqual(sorted(as_dict.keys()), sorted(_expected_column_names))
 
     def test__loaded_columns_as_list(self):
@@ -674,6 +693,7 @@ class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
     def test__pyramid_request(self):
         foo = model_objects.FooObject.get__by__id(self.request.dbSession.writer, 1)
         self.assertIsNotNone(foo)
+        assert foo is not None  # mypy
         self.assertEqual(foo.id, 1)
         self.assertEqual(foo._pyramid_request, self.request)
 
@@ -727,9 +747,9 @@ class TestDebugtoolbarPanel(_TestPyramidAppHarness, unittest.TestCase):
     def test_panel_tracks(self):
         # create a view
         def empty_view(request):
-            foo = request.dbSession.writer.query(
+            foo = request.dbSession.writer.query(  # noqa
                 model_objects.FooObject
-            ).first()  # noqa
+            ).first()
             return Response(
                 "<html><head></head><body>OK</body></html>", content_type="text/html"
             )

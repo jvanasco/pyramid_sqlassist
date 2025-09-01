@@ -1,10 +1,10 @@
 # stdlib
+from typing import Dict
 from typing import TYPE_CHECKING
 
 # pypi
 from pyramid_debugtoolbar.panels import DebugPanel
 
-# typing
 if TYPE_CHECKING:
     from pyramid.request import Request
 
@@ -19,8 +19,12 @@ class PyramidSqlAssistDebugPanel(DebugPanel):
     name = "SQLAssist"
     has_content = True
     template = "pyramid_sqlassist.debugtoolbar.panels:templates/sqlassist.dbtmako"
+    data: Dict
 
-    def __init__(self, request):
+    def __init__(
+        self,
+        request: "Request",
+    ):
         if hasattr(request.registry, "pyramid_sqlassist"):
             dbSessionName = request.registry.pyramid_sqlassist["request_method_name"]
             self.data = {
