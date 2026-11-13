@@ -1,6 +1,9 @@
 # stdlib
 import re
 import unittest
+from typing import Any
+from typing import Dict
+from typing import Tuple
 from unittest.mock import patch
 
 # pypi
@@ -431,6 +434,29 @@ class TestInitializeEngine(unittest.TestCase):
 
 
 class TestEngineLifecycle(unittest.TestCase):
+    def test_legacy_autocommit_settings_fail_before_registration(self) -> None:
+        """Reject all legacy autocommit inputs before replacing a working engine."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_default=True)
+            original = interface.get_wrapped_engine()
+            options: Tuple[Tuple[Dict[str, Any], str], ...] = (
+                ({"is_readonly": True}, "is_readonly=True"),
+                ({"is_autocommit": True}, "is_autocommit=True"),
+                ({"sa_sessionmaker_params": {"autocommit": True}}, "autocommit=True"),
+            )
+            for is_scoped in (False, True):
+                for kwargs, message in options:
+                    with self.subTest(is_scoped=is_scoped, option=message):
+                        with self.assertRaisesRegex(ValueError, message):
+                            interface.initialize_engine(
+                                "reader", engine, is_scoped=is_scoped, **kwargs
+                            )
+                        self.assertIs(interface.get_wrapped_engine(), original)
+
     def test_mapper_failure_preserves_existing_registration(self) -> None:
         """Keep the registered default when a replacement fails to initialize."""
         engine = sqlalchemy.create_engine("sqlite://")

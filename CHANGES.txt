@@ -1,4 +1,5 @@
 Unreleased
+    * Reject legacy read-only and session autocommit options during engine initialization on SQLAlchemy 2.x.
     * Resolve request engines lazily and clean up through the original wrapper after replacement.
     * Isolate non-scoped sessions and their cleanup across overlapping requests.
     * Publish engine registrations only after successful initialization.

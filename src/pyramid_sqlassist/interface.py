@@ -148,14 +148,18 @@ class EngineWrapper(object):
         is_scoped: bool,
         sa_sessionmaker_params: Dict,
         use_zope: bool = False,
-    ):
+    ) -> None:
         """
+        Configure the session factory and reject unsupported session autocommit.
+
         :param is_scoped: boolean.
         :param sa_sessionmaker_params: dict. Passed as-is to ``sqlalchemy.orm.sessionmaker()``
         :param use_zope: boolean. optional. Default ``False``.
         """
         if __debug__:
             log.debug("EngineWrapper[%s].init_sessionmaker()", self.engine_name)
+        if sa_sessionmaker_params.get("autocommit"):
+            raise ValueError("SQLAlchemy 2.x does not support session autocommit=True")
         sa_sessionmaker_params["bind"] = self.sa_engine
         sa_sessionmaker = sessionmaker(**sa_sessionmaker_params)
         self.sa_sessionmaker = sa_sessionmaker
@@ -341,10 +345,10 @@ def initialize_engine(
     :param is_default: boolean. default ``False``.  Used to declare the default engine.
     :param use_zope: boolean. default ``False``.  Enable to use ``zope.sqlalchemy``.
     :param sa_sessionmaker_params: dict. Passed to SQLAlchemy's ``sessionmaker``.
-    :param is_readonly: boolean. default ``False``.  If set to ``True``, SQLAssist will
-        optimize the SQLAlchemy Engine for "readonly" access with the following
-            ``autocommit=True``
-            ``expire_on_commit=False``
+    :param is_readonly: Legacy option that enabled session autocommit.
+        SQLAlchemy 2.x does not support this option.
+    :param is_autocommit: Legacy session autocommit option. Only false or unset
+        values are supported by SQLAlchemy 2.x.
     :param is_scoped: boolean. default `True`. Controls whether or not sessions
         are scoped_sessions.
     :param is_configure_mappers: boolean. default `True`.  Will call
@@ -364,18 +368,18 @@ def initialize_engine(
     if reflect:
         raise NotImplementedError
 
-    # configure the engine around a wrapper
-    wrapped_engine = EngineWrapper(engine_name, sa_engine)
+    if is_readonly:
+        raise ValueError(
+            "is_readonly=True requires session autocommit, which SQLAlchemy 2.x "
+            "does not support"
+        )
+    if is_autocommit:
+        raise ValueError("SQLAlchemy 2.x does not support is_autocommit=True")
 
-    # these are some defaults that i once used for writers
-    # loggers would autocommit as true
-    # not sure this is needed with zope
-    if sa_sessionmaker_params is None:
-        sa_sessionmaker_params = {}
-    _sa_sessionmaker_params__defaults = {"autoflush": True, "autocommit": False}
-    for i in _sa_sessionmaker_params__defaults.keys():
-        if i not in sa_sessionmaker_params:
-            sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
+    wrapped_engine = EngineWrapper(engine_name, sa_engine)
+    sa_sessionmaker_params = dict(sa_sessionmaker_params or {})
+    sa_sessionmaker_params.setdefault("autoflush", True)
+    sa_sessionmaker_params.setdefault("autocommit", False)
 
     # prior to v0.13.0 and zope.sqlalchemy==1.2, we would load the
     # ZopeTransactionExtension into `sa_sessionmaker_params["extension"]`
@@ -390,10 +394,6 @@ def initialize_engine(
             raise ValueError(
                 """`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`"""
             )
-
-    if is_readonly or is_autocommit:
-        sa_sessionmaker_params["autocommit"] = True
-        sa_sessionmaker_params["expire_on_commit"] = False
 
     # this initializes the session
     wrapped_engine.init_sessionmaker(
