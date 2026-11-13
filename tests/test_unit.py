@@ -1,6 +1,10 @@
 # stdlib
 import re
 import unittest
+from typing import Any
+from typing import Dict
+from typing import Tuple
+from unittest.mock import patch
 
 # pypi
 from pyramid import testing
@@ -11,10 +15,10 @@ import sqlalchemy
 
 # local
 import pyramid_sqlassist
+from pyramid_sqlassist import interface
 from ._utils import DummyDataManager
 from .pyramid_testapp import model
 from .pyramid_testapp.model import model_objects
-
 
 # ==============================================================================
 
@@ -427,6 +431,149 @@ class TestInitializeEngine(unittest.TestCase):
             use_zope=bool(settings.get("sqlassist.use_zope")),
             is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
+
+
+class TestEngineLifecycle(unittest.TestCase):
+    def test_legacy_autocommit_settings_fail_before_registration(self) -> None:
+        """Reject all legacy autocommit inputs before replacing a working engine."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_default=True)
+            original = interface.get_wrapped_engine()
+            options: Tuple[Tuple[Dict[str, Any], str], ...] = (
+                ({"is_readonly": True}, "is_readonly=True"),
+                ({"is_autocommit": True}, "is_autocommit=True"),
+                ({"sa_sessionmaker_params": {"autocommit": True}}, "autocommit=True"),
+            )
+            for is_scoped in (False, True):
+                for kwargs, message in options:
+                    with self.subTest(is_scoped=is_scoped, option=message):
+                        with self.assertRaisesRegex(ValueError, message):
+                            interface.initialize_engine(
+                                "reader", engine, is_scoped=is_scoped, **kwargs
+                            )
+                        self.assertIs(interface.get_wrapped_engine(), original)
+
+    def test_mapper_failure_preserves_existing_registration(self) -> None:
+        """Keep the registered default when a replacement fails to initialize."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_default=True)
+            original = interface.get_wrapped_engine()
+            with patch.object(
+                sqlalchemy.orm, "configure_mappers", side_effect=RuntimeError("mappers")
+            ):
+                with self.assertRaisesRegex(RuntimeError, "mappers"):
+                    interface.initialize_engine("reader", engine, is_default=True)
+            self.assertIs(interface.get_wrapped_engine(), original)
+
+    def test_overlapping_requests_close_only_their_own_sessions(self) -> None:
+        """Keep each non-scoped session with the request that opened it."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_scoped=False)
+            direct_session = interface.get_session("reader")
+            first_request = Request.blank("/first")
+            second_request = Request.blank("/second")
+            first = interface.DbSessionsContainer(first_request).reader
+            second = interface.DbSessionsContainer(second_request).reader
+
+            self.assertIsNot(first, second)
+            self.assertIs(first.info["request"], first_request)
+            self.assertIs(second.info["request"], second_request)
+            self.assertIs(interface.get_session("reader"), direct_session)
+            with patch.object(
+                first, "close", wraps=first.close
+            ) as close_first, patch.object(
+                second, "close", wraps=second.close
+            ) as close_second, patch.object(
+                direct_session, "close"
+            ) as close_direct:
+                first_request._process_finished_callbacks()
+                close_first.assert_called_once_with()
+                close_second.assert_not_called()
+
+                second_request._process_finished_callbacks()
+                close_first.assert_called_once_with()
+                close_second.assert_called_once_with()
+                close_direct.assert_not_called()
+
+    def test_request_can_use_engine_registered_after_container_creation(self) -> None:
+        """Resolve the engine when the request first asks for its session."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            request = Request.blank("/")
+            container = interface.DbSessionsContainer(request)
+            interface.initialize_engine("reader", engine, is_scoped=False)
+
+            session = container.reader
+            self.assertIs(session.info["request"], request)
+            with patch.object(session, "close", wraps=session.close) as close:
+                request._process_finished_callbacks()
+                close.assert_called_once_with()
+
+    def test_request_cleans_up_original_engine_after_replacement(self) -> None:
+        """Close the original session even when the replacement uses another scope."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_scoped=False)
+            request = Request.blank("/")
+            session = interface.DbSessionsContainer(request).reader
+            interface.initialize_engine("reader", engine, is_scoped=True)
+            replacement = interface.get_wrapped_engine("reader").sa_session_scoped
+
+            with patch.object(session, "close", wraps=session.close) as close:
+                with patch.object(replacement, "remove") as remove:
+                    request._process_finished_callbacks()
+                    close.assert_called_once_with()
+                    remove.assert_not_called()
+
+    def test_cleanup_continues_and_retries_failed_engine(self) -> None:
+        """Close other started sessions and retry only the failed cleanup."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            for name in ("reader", "writer", "logger"):
+                interface.initialize_engine(name, engine, is_scoped=False)
+            request = Request.blank("/")
+            container = interface.DbSessionsContainer(request)
+            reader = container.reader
+            writer = container.writer
+            logger = interface.get_session("logger")
+            with patch.object(
+                reader, "close", side_effect=RuntimeError("reader close")
+            ) as close_reader, patch.object(
+                writer, "close", wraps=writer.close
+            ) as close_writer, patch.object(
+                logger, "close"
+            ) as close_logger:
+                with self.assertRaisesRegex(RuntimeError, "reader close"):
+                    interface.request_cleanup(request, container)
+                close_writer.assert_called_once_with()
+                close_logger.assert_not_called()
+
+                close_reader.side_effect = None
+                interface.request_cleanup(request, container)
+                self.assertEqual(close_reader.call_count, 2)
+                close_writer.assert_called_once_with()
+                close_logger.assert_not_called()
 
 
 class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):

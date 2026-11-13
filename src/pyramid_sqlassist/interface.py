@@ -148,14 +148,18 @@ class EngineWrapper(object):
         is_scoped: bool,
         sa_sessionmaker_params: Dict,
         use_zope: bool = False,
-    ):
+    ) -> None:
         """
+        Configure the session factory and reject unsupported session autocommit.
+
         :param is_scoped: boolean.
         :param sa_sessionmaker_params: dict. Passed as-is to ``sqlalchemy.orm.sessionmaker()``
         :param use_zope: boolean. optional. Default ``False``.
         """
         if __debug__:
             log.debug("EngineWrapper[%s].init_sessionmaker()", self.engine_name)
+        if sa_sessionmaker_params.get("autocommit"):
+            raise ValueError("SQLAlchemy 2.x does not support session autocommit=True")
         sa_sessionmaker_params["bind"] = self.sa_engine
         sa_sessionmaker = sessionmaker(**sa_sessionmaker_params)
         self.sa_sessionmaker = sa_sessionmaker
@@ -204,7 +208,8 @@ class EngineWrapper(object):
         if __debug__:
             log.debug(
                 "EngineWrapper[%s].request_start() | request = %s",
-                (self.engine_name, id(request)),
+                self.engine_name,
+                id(request),
             )
             log.debug(
                 "EngineWrapper.request_start() | %s | %s",
@@ -213,26 +218,24 @@ class EngineWrapper(object):
             )
 
         _engine_status = dbSessionsContainer._engine_status_tracker.engines.get(
-            self.engine_name
+            self.engine_name, STATUS_CODES.INIT
         )
 
-        if (_engine_status is not None) and (_engine_status == STATUS_CODES.INIT):
-            # reinit the session, this only requires invoking it like a function to modify in-place
+        if _engine_status == STATUS_CODES.INIT:
+            if self.is_scoped:
+                session = self.sa_session_scoped()
+            else:
+                session = self.sa_sessionmaker()
+                dbSessionsContainer._sessions[self.engine_name] = session
+                # Scoped sessions expose their factory through the proxy.
+                session.session_factory = self.sa_sessionmaker  # type: ignore[attr-defined]
+
+            dbSessionsContainer._engines[self.engine_name] = self
             dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
                 STATUS_CODES.START
             )
-            if self.is_scoped:
-                self.sa_session_scoped()
-                # stash the active Pyramid `request` into the SQLAlchemy "info" dict.
-                self.sa_session_scoped.info["request"] = request
-                self.sa_session_scoped.rollback()
-            else:
-                self.sa_session = self.sa_sessionmaker()
-                # stash the active Pyramid `request` into the SQLAlchemy "info" dict.
-                self.sa_session.info["request"] = request
-                self.sa_session.rollback()
-                # scoped sessions have a `session_factory`, but normal ones do not
-                self.sa_session.session_factory = self.sa_sessionmaker  # type: ignore[attr-defined]
+            session.info["request"] = request
+            session.rollback()
         else:
             if __debug__:
                 log.debug(
@@ -250,12 +253,13 @@ class EngineWrapper(object):
         This is called once per Engine, per Request.
 
         :param request: The active Pyramid `Request` instance.
-        :param dbSessionsContainer: Aan instance of ``DbSessionsContainer``. optional.
+        :param dbSessionsContainer: An instance of ``DbSessionsContainer``. optional.
         """
         if __debug__:
             log.debug(
                 "EngineWrapper[%s].request_end() | request = %s",
-                (self.engine_name, id(request)),
+                self.engine_name,
+                id(request),
             )
             log.debug(
                 "EngineWrapper.request_end() | %s | %s",
@@ -263,24 +267,23 @@ class EngineWrapper(object):
                 self._session_repr,
             )
 
-        # optional tracking
         if dbSessionsContainer is not None:
-            if self.engine_name in dbSessionsContainer._engine_status_tracker.engines:
-                if (
-                    dbSessionsContainer._engine_status_tracker.engines[self.engine_name]
-                    == STATUS_CODES.INIT
-                ):
-                    # we only initialized the containiner. no need to call the SQLAlchemy internals
-                    return
-                dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
-                    STATUS_CODES.END
-                )
+            statuses = dbSessionsContainer._engine_status_tracker.engines
+            if statuses.get(self.engine_name) != STATUS_CODES.START:
+                return
 
-        # remove no matter what
         if self.is_scoped:
             self.sa_session_scoped.remove()
-        else:
+        elif dbSessionsContainer is None:
             self.sa_session.close()
+        else:
+            dbSessionsContainer._sessions[self.engine_name].close()
+            del dbSessionsContainer._sessions[self.engine_name]
+
+        if dbSessionsContainer is not None:
+            dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
+                STATUS_CODES.END
+            )
 
     def dispose(self):
         """
@@ -337,15 +340,15 @@ def initialize_engine(
 ) -> None:
     """
     Wraps each engine in an ``EngineWrapper``
-    Registers each engine into the ``_ENGINE_REGISTRY``
+    Publishes the wrapper in ``_ENGINE_REGISTRY`` after successful setup.
 
     :param is_default: boolean. default ``False``.  Used to declare the default engine.
     :param use_zope: boolean. default ``False``.  Enable to use ``zope.sqlalchemy``.
     :param sa_sessionmaker_params: dict. Passed to SQLAlchemy's ``sessionmaker``.
-    :param is_readonly: boolean. default ``False``.  If set to ``True``, SQLAssist will
-        optimize the SQLAlchemy Engine for "readonly" access with the following
-            ``autocommit=True``
-            ``expire_on_commit=False``
+    :param is_readonly: Legacy option that enabled session autocommit.
+        SQLAlchemy 2.x does not support this option.
+    :param is_autocommit: Legacy session autocommit option. Only false or unset
+        values are supported by SQLAlchemy 2.x.
     :param is_scoped: boolean. default `True`. Controls whether or not sessions
         are scoped_sessions.
     :param is_configure_mappers: boolean. default `True`.  Will call
@@ -362,18 +365,21 @@ def initialize_engine(
     if engine_name == "!all":
         raise ValueError("Invalid `engine_name`: `!all` is reserved")
 
-    # configure the engine around a wrapper
-    wrapped_engine = EngineWrapper(engine_name, sa_engine)
+    if reflect:
+        raise NotImplementedError
 
-    # these are some defaults that i once used for writers
-    # loggers would autocommit as true
-    # not sure this is needed with zope
-    if sa_sessionmaker_params is None:
-        sa_sessionmaker_params = {}
-    _sa_sessionmaker_params__defaults = {"autoflush": True, "autocommit": False}
-    for i in _sa_sessionmaker_params__defaults.keys():
-        if i not in sa_sessionmaker_params:
-            sa_sessionmaker_params[i] = _sa_sessionmaker_params__defaults[i]
+    if is_readonly:
+        raise ValueError(
+            "is_readonly=True requires session autocommit, which SQLAlchemy 2.x "
+            "does not support"
+        )
+    if is_autocommit:
+        raise ValueError("SQLAlchemy 2.x does not support is_autocommit=True")
+
+    wrapped_engine = EngineWrapper(engine_name, sa_engine)
+    sa_sessionmaker_params = dict(sa_sessionmaker_params or {})
+    sa_sessionmaker_params.setdefault("autoflush", True)
+    sa_sessionmaker_params.setdefault("autocommit", False)
 
     # prior to v0.13.0 and zope.sqlalchemy==1.2, we would load the
     # ZopeTransactionExtension into `sa_sessionmaker_params["extension"]`
@@ -389,26 +395,18 @@ def initialize_engine(
                 """`use_zope=True` is incompatible with `extension` in `sa_sessionmaker_params`"""
             )
 
-    if is_readonly or is_autocommit:
-        sa_sessionmaker_params["autocommit"] = True
-        sa_sessionmaker_params["expire_on_commit"] = False
-
     # this initializes the session
     wrapped_engine.init_sessionmaker(
         is_scoped, sa_sessionmaker_params, use_zope=use_zope
     )
 
+    if is_configure_mappers:
+        sqlalchemy.orm.configure_mappers()
+
     # stash the wrapper
     _ENGINE_REGISTRY["engines"][engine_name] = wrapped_engine
     if is_default:
         _ENGINE_REGISTRY["!default"] = engine_name
-
-    if is_configure_mappers:
-        sqlalchemy.orm.configure_mappers()
-
-    # finally, reflect if needed
-    if reflect:
-        raise NotImplementedError
 
 
 def get_wrapped_engine(name: str = "!default") -> "EngineWrapper":
@@ -448,18 +446,31 @@ def request_cleanup(
     dbSessionsContainer: Optional["DbSessionsContainer"] = None,
 ) -> None:
     """
-    Removes all our sessions from the stash.
-
-    This was a cleanup activity once-upon-a-time
+    Close eligible sessions across all engines and re-raise the first failure.
 
     :param request: The active Pyramid `Request` instance.
     :param dbSessionsContainer: An instance of ``DbSessionsContainer``
     """
     if __debug__:
         log.debug("request_cleanup()")
-    for engine_name in _ENGINE_REGISTRY["engines"].keys():
-        _engine = get_wrapped_engine(engine_name)
-        _engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
+    first_error: Optional[Exception] = None
+    engines = (
+        _ENGINE_REGISTRY["engines"]
+        if dbSessionsContainer is None
+        else dbSessionsContainer._engines
+    )
+    for engine in tuple(engines.values()):
+        try:
+            engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
+        except Exception as exc:
+            if first_error is None:
+                first_error = exc
+            else:
+                log.exception(
+                    "Session cleanup failed for engine %s", engine.engine_name
+                )
+    if first_error is not None:
+        raise first_error
 
 
 def _ensure_cleanup(
@@ -512,29 +523,32 @@ class DbSessionsContainer(object):
 
     _engine_status_tracker: "EngineStatusTracker"
     _request: "Request"
+    _engines: Dict[str, "EngineWrapper"]
+    _sessions: Dict[str, "Session"]
 
     def __init__(self, request: "Request"):
         """
         :param request: The active Pyramid `Request` instance.
         """
         self._request = request
-
-        # build a tracker
-        _engine_status_tracker = EngineStatusTracker()
-        for engine_name in _ENGINE_REGISTRY["engines"].keys():
-            _engine_status_tracker.engines[engine_name] = STATUS_CODES.INIT
-        self._engine_status_tracker = _engine_status_tracker
+        self._engines = {}
+        self._sessions = {}
+        self._engine_status_tracker = EngineStatusTracker()
+        self._engine_status_tracker.engines = dict.fromkeys(
+            _ENGINE_REGISTRY["engines"], STATUS_CODES.INIT
+        )
         # register our cleanup
         _ensure_cleanup(request, self)
 
     def _get_initialized_session(self, engine_name: str) -> "TYPES_SESSION":
-        """
-        :param engine_name: string. Name of the wrapped engine.
-        """
-        _engine = get_wrapped_engine(engine_name)
-        _engine.request_start(self._request, self)
-        _session = _engine.session
-        return _session
+        """Return the scoped proxy or the session owned by this request."""
+        engine = self._engines.get(engine_name)
+        if engine is None:
+            engine = get_wrapped_engine(engine_name)
+        engine.request_start(self._request, self)
+        if engine.is_scoped:
+            return engine.session
+        return self._sessions[engine.engine_name]
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

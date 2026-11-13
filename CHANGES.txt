@@ -1,3 +1,14 @@
+1.0.0
+    * Reject legacy read-only and session autocommit options during engine initialization on SQLAlchemy 2.x.
+    * Resolve request engines lazily and clean up through the original wrapper after replacement.
+    * Isolate non-scoped sessions and their cleanup across overlapping requests.
+    * Publish engine registrations only after successful initialization.
+    * Attempt cleanup for every started engine even when a session fails to close.
+    * Consolidate packaging, tox, pytest, and mypy configuration.
+    * Keep Python 3.7 support and extend the test matrix through Python 3.15.
+    * Add a setuptools compatibility constraint for Pyramid on Python 3.7–3.9.
+    * Generate HTML coverage reports for each Python version.
+
 0.16.0
     * drop py36
     * drop sqlalchemy<2
