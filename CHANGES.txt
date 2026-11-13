@@ -1,4 +1,5 @@
 Unreleased
+    * Isolate non-scoped sessions and their cleanup across overlapping requests.
     * Publish engine registrations only after successful initialization.
     * Attempt cleanup for every started engine even when a session fails to close.
     * Consolidate packaging, tox, pytest, and mypy configuration.

@@ -447,6 +447,40 @@ class TestEngineLifecycle(unittest.TestCase):
                     interface.initialize_engine("reader", engine, is_default=True)
             self.assertIs(interface.get_wrapped_engine(), original)
 
+    def test_overlapping_requests_close_only_their_own_sessions(self) -> None:
+        """Keep each non-scoped session with the request that opened it."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_scoped=False)
+            direct_session = interface.get_session("reader")
+            first_request = Request.blank("/first")
+            second_request = Request.blank("/second")
+            first = interface.DbSessionsContainer(first_request).reader
+            second = interface.DbSessionsContainer(second_request).reader
+
+            self.assertIsNot(first, second)
+            self.assertIs(first.info["request"], first_request)
+            self.assertIs(second.info["request"], second_request)
+            self.assertIs(interface.get_session("reader"), direct_session)
+            with patch.object(
+                first, "close", wraps=first.close
+            ) as close_first, patch.object(
+                second, "close", wraps=second.close
+            ) as close_second, patch.object(
+                direct_session, "close"
+            ) as close_direct:
+                first_request._process_finished_callbacks()
+                close_first.assert_called_once_with()
+                close_second.assert_not_called()
+
+                second_request._process_finished_callbacks()
+                close_first.assert_called_once_with()
+                close_second.assert_called_once_with()
+                close_direct.assert_not_called()
+
     def test_cleanup_continues_and_retries_failed_engine(self) -> None:
         """Close other started sessions and retry only the failed cleanup."""
         engine = sqlalchemy.create_engine("sqlite://")

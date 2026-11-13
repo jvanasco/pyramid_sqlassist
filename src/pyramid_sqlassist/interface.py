@@ -218,22 +218,19 @@ class EngineWrapper(object):
         )
 
         if (_engine_status is not None) and (_engine_status == STATUS_CODES.INIT):
-            # reinit the session, this only requires invoking it like a function to modify in-place
+            if self.is_scoped:
+                session = self.sa_session_scoped()
+            else:
+                session = self.sa_sessionmaker()
+                dbSessionsContainer._sessions[self.engine_name] = session
+                # Scoped sessions expose their factory through the proxy.
+                session.session_factory = self.sa_sessionmaker  # type: ignore[attr-defined]
+
             dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
                 STATUS_CODES.START
             )
-            if self.is_scoped:
-                self.sa_session_scoped()
-                # stash the active Pyramid `request` into the SQLAlchemy "info" dict.
-                self.sa_session_scoped.info["request"] = request
-                self.sa_session_scoped.rollback()
-            else:
-                self.sa_session = self.sa_sessionmaker()
-                # stash the active Pyramid `request` into the SQLAlchemy "info" dict.
-                self.sa_session.info["request"] = request
-                self.sa_session.rollback()
-                # scoped sessions have a `session_factory`, but normal ones do not
-                self.sa_session.session_factory = self.sa_sessionmaker  # type: ignore[attr-defined]
+            session.info["request"] = request
+            session.rollback()
         else:
             if __debug__:
                 log.debug(
@@ -272,8 +269,11 @@ class EngineWrapper(object):
 
         if self.is_scoped:
             self.sa_session_scoped.remove()
-        else:
+        elif dbSessionsContainer is None:
             self.sa_session.close()
+        else:
+            dbSessionsContainer._sessions[self.engine_name].close()
+            del dbSessionsContainer._sessions[self.engine_name]
 
         if dbSessionsContainer is not None:
             dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
@@ -517,12 +517,14 @@ class DbSessionsContainer(object):
 
     _engine_status_tracker: "EngineStatusTracker"
     _request: "Request"
+    _sessions: Dict[str, "Session"]
 
     def __init__(self, request: "Request"):
         """
         :param request: The active Pyramid `Request` instance.
         """
         self._request = request
+        self._sessions = {}
 
         # build a tracker
         _engine_status_tracker = EngineStatusTracker()
@@ -533,13 +535,12 @@ class DbSessionsContainer(object):
         _ensure_cleanup(request, self)
 
     def _get_initialized_session(self, engine_name: str) -> "TYPES_SESSION":
-        """
-        :param engine_name: string. Name of the wrapped engine.
-        """
-        _engine = get_wrapped_engine(engine_name)
-        _engine.request_start(self._request, self)
-        _session = _engine.session
-        return _session
+        """Return the scoped proxy or the session owned by this request."""
+        engine = get_wrapped_engine(engine_name)
+        engine.request_start(self._request, self)
+        if engine.is_scoped:
+            return engine.session
+        return self._sessions[engine.engine_name]
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
