@@ -2,7 +2,6 @@ graft src
 graft tests
 
 include setup.cfg pyproject.toml
-include tox.ini
 include README.md
 include CHANGES.txt
 include TESTING.txt

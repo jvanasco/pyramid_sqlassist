@@ -1,2 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [tool.black]
-target-version = ['py37']
+target-version = ["py37"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore: pkg_resources is deprecated as an API : UserWarning",
+    "ignore: Deprecated call to `pkg_resources.declare_namespace : DeprecationWarning",
+    "ignore: The new security policy has deprecated effective_principals : DeprecationWarning",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+exclude = "^build/"
+
+[[tool.mypy.overrides]]
+module = [
+    "pyramid.*",
+    "pyramid_debugtoolbar.*",
+    "zope.sqlalchemy.*",
+    "transaction.*",
+    "webtest.*",
+]
+ignore_missing_imports = true

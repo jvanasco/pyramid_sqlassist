@@ -1,3 +1,9 @@
+Unreleased
+    * Consolidate packaging, tox, pytest, and mypy configuration.
+    * Keep Python 3.7 support and extend the test matrix through Python 3.15.
+    * Add a setuptools compatibility constraint for Pyramid on Python 3.7–3.9.
+    * Generate HTML coverage reports for each Python version.
+
 0.16.0
     * drop py36
     * drop sqlalchemy<2
