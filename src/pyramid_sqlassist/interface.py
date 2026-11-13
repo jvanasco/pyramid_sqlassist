@@ -204,7 +204,8 @@ class EngineWrapper(object):
         if __debug__:
             log.debug(
                 "EngineWrapper[%s].request_start() | request = %s",
-                (self.engine_name, id(request)),
+                self.engine_name,
+                id(request),
             )
             log.debug(
                 "EngineWrapper.request_start() | %s | %s",
@@ -250,12 +251,13 @@ class EngineWrapper(object):
         This is called once per Engine, per Request.
 
         :param request: The active Pyramid `Request` instance.
-        :param dbSessionsContainer: Aan instance of ``DbSessionsContainer``. optional.
+        :param dbSessionsContainer: An instance of ``DbSessionsContainer``. optional.
         """
         if __debug__:
             log.debug(
                 "EngineWrapper[%s].request_end() | request = %s",
-                (self.engine_name, id(request)),
+                self.engine_name,
+                id(request),
             )
             log.debug(
                 "EngineWrapper.request_end() | %s | %s",
@@ -263,24 +265,20 @@ class EngineWrapper(object):
                 self._session_repr,
             )
 
-        # optional tracking
         if dbSessionsContainer is not None:
-            if self.engine_name in dbSessionsContainer._engine_status_tracker.engines:
-                if (
-                    dbSessionsContainer._engine_status_tracker.engines[self.engine_name]
-                    == STATUS_CODES.INIT
-                ):
-                    # we only initialized the containiner. no need to call the SQLAlchemy internals
-                    return
-                dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
-                    STATUS_CODES.END
-                )
+            statuses = dbSessionsContainer._engine_status_tracker.engines
+            if statuses.get(self.engine_name) != STATUS_CODES.START:
+                return
 
-        # remove no matter what
         if self.is_scoped:
             self.sa_session_scoped.remove()
         else:
             self.sa_session.close()
+
+        if dbSessionsContainer is not None:
+            dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
+                STATUS_CODES.END
+            )
 
     def dispose(self):
         """
@@ -337,7 +335,7 @@ def initialize_engine(
 ) -> None:
     """
     Wraps each engine in an ``EngineWrapper``
-    Registers each engine into the ``_ENGINE_REGISTRY``
+    Publishes the wrapper in ``_ENGINE_REGISTRY`` after successful setup.
 
     :param is_default: boolean. default ``False``.  Used to declare the default engine.
     :param use_zope: boolean. default ``False``.  Enable to use ``zope.sqlalchemy``.
@@ -361,6 +359,9 @@ def initialize_engine(
 
     if engine_name == "!all":
         raise ValueError("Invalid `engine_name`: `!all` is reserved")
+
+    if reflect:
+        raise NotImplementedError
 
     # configure the engine around a wrapper
     wrapped_engine = EngineWrapper(engine_name, sa_engine)
@@ -398,17 +399,13 @@ def initialize_engine(
         is_scoped, sa_sessionmaker_params, use_zope=use_zope
     )
 
+    if is_configure_mappers:
+        sqlalchemy.orm.configure_mappers()
+
     # stash the wrapper
     _ENGINE_REGISTRY["engines"][engine_name] = wrapped_engine
     if is_default:
         _ENGINE_REGISTRY["!default"] = engine_name
-
-    if is_configure_mappers:
-        sqlalchemy.orm.configure_mappers()
-
-    # finally, reflect if needed
-    if reflect:
-        raise NotImplementedError
 
 
 def get_wrapped_engine(name: str = "!default") -> "EngineWrapper":
@@ -448,18 +445,26 @@ def request_cleanup(
     dbSessionsContainer: Optional["DbSessionsContainer"] = None,
 ) -> None:
     """
-    Removes all our sessions from the stash.
-
-    This was a cleanup activity once-upon-a-time
+    Close eligible sessions across all engines and re-raise the first failure.
 
     :param request: The active Pyramid `Request` instance.
     :param dbSessionsContainer: An instance of ``DbSessionsContainer``
     """
     if __debug__:
         log.debug("request_cleanup()")
-    for engine_name in _ENGINE_REGISTRY["engines"].keys():
-        _engine = get_wrapped_engine(engine_name)
-        _engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
+    first_error: Optional[Exception] = None
+    for engine in tuple(_ENGINE_REGISTRY["engines"].values()):
+        try:
+            engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
+        except Exception as exc:
+            if first_error is None:
+                first_error = exc
+            else:
+                log.exception(
+                    "Session cleanup failed for engine %s", engine.engine_name
+                )
+    if first_error is not None:
+        raise first_error
 
 
 def _ensure_cleanup(

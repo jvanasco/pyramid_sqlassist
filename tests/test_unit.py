@@ -1,6 +1,7 @@
 # stdlib
 import re
 import unittest
+from unittest.mock import patch
 
 # pypi
 from pyramid import testing
@@ -11,10 +12,10 @@ import sqlalchemy
 
 # local
 import pyramid_sqlassist
+from pyramid_sqlassist import interface
 from ._utils import DummyDataManager
 from .pyramid_testapp import model
 from .pyramid_testapp.model import model_objects
-
 
 # ==============================================================================
 
@@ -427,6 +428,56 @@ class TestInitializeEngine(unittest.TestCase):
             use_zope=bool(settings.get("sqlassist.use_zope")),
             is_scoped=bool(settings.get("sqlassist.is_scoped")),
         )
+
+
+class TestEngineLifecycle(unittest.TestCase):
+    def test_mapper_failure_preserves_existing_registration(self) -> None:
+        """Keep the registered default when a replacement fails to initialize."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_default=True)
+            original = interface.get_wrapped_engine()
+            with patch.object(
+                sqlalchemy.orm, "configure_mappers", side_effect=RuntimeError("mappers")
+            ):
+                with self.assertRaisesRegex(RuntimeError, "mappers"):
+                    interface.initialize_engine("reader", engine, is_default=True)
+            self.assertIs(interface.get_wrapped_engine(), original)
+
+    def test_cleanup_continues_and_retries_failed_engine(self) -> None:
+        """Close other started sessions and retry only the failed cleanup."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            for name in ("reader", "writer", "logger"):
+                interface.initialize_engine(name, engine, is_scoped=False)
+            request = Request.blank("/")
+            container = interface.DbSessionsContainer(request)
+            reader = container.reader
+            writer = container.writer
+            logger = interface.get_session("logger")
+            with patch.object(
+                reader, "close", side_effect=RuntimeError("reader close")
+            ) as close_reader, patch.object(
+                writer, "close", wraps=writer.close
+            ) as close_writer, patch.object(
+                logger, "close"
+            ) as close_logger:
+                with self.assertRaisesRegex(RuntimeError, "reader close"):
+                    interface.request_cleanup(request, container)
+                close_writer.assert_called_once_with()
+                close_logger.assert_not_called()
+
+                close_reader.side_effect = None
+                interface.request_cleanup(request, container)
+                self.assertEqual(close_reader.call_count, 2)
+                close_writer.assert_called_once_with()
+                close_logger.assert_not_called()
 
 
 class TestModelObjectFunctions(_TestPyramidAppHarness, unittest.TestCase):
