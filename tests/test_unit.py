@@ -481,6 +481,42 @@ class TestEngineLifecycle(unittest.TestCase):
                 close_second.assert_called_once_with()
                 close_direct.assert_not_called()
 
+    def test_request_can_use_engine_registered_after_container_creation(self) -> None:
+        """Resolve the engine when the request first asks for its session."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            request = Request.blank("/")
+            container = interface.DbSessionsContainer(request)
+            interface.initialize_engine("reader", engine, is_scoped=False)
+
+            session = container.reader
+            self.assertIs(session.info["request"], request)
+            with patch.object(session, "close", wraps=session.close) as close:
+                request._process_finished_callbacks()
+                close.assert_called_once_with()
+
+    def test_request_cleans_up_original_engine_after_replacement(self) -> None:
+        """Close the original session even when the replacement uses another scope."""
+        engine = sqlalchemy.create_engine("sqlite://")
+        self.addCleanup(engine.dispose)
+        with patch.object(
+            interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+        ):
+            interface.initialize_engine("reader", engine, is_scoped=False)
+            request = Request.blank("/")
+            session = interface.DbSessionsContainer(request).reader
+            interface.initialize_engine("reader", engine, is_scoped=True)
+            replacement = interface.get_wrapped_engine("reader").sa_session_scoped
+
+            with patch.object(session, "close", wraps=session.close) as close:
+                with patch.object(replacement, "remove") as remove:
+                    request._process_finished_callbacks()
+                    close.assert_called_once_with()
+                    remove.assert_not_called()
+
     def test_cleanup_continues_and_retries_failed_engine(self) -> None:
         """Close other started sessions and retry only the failed cleanup."""
         engine = sqlalchemy.create_engine("sqlite://")

@@ -214,10 +214,10 @@ class EngineWrapper(object):
             )
 
         _engine_status = dbSessionsContainer._engine_status_tracker.engines.get(
-            self.engine_name
+            self.engine_name, STATUS_CODES.INIT
         )
 
-        if (_engine_status is not None) and (_engine_status == STATUS_CODES.INIT):
+        if _engine_status == STATUS_CODES.INIT:
             if self.is_scoped:
                 session = self.sa_session_scoped()
             else:
@@ -226,6 +226,7 @@ class EngineWrapper(object):
                 # Scoped sessions expose their factory through the proxy.
                 session.session_factory = self.sa_sessionmaker  # type: ignore[attr-defined]
 
+            dbSessionsContainer._engines[self.engine_name] = self
             dbSessionsContainer._engine_status_tracker.engines[self.engine_name] = (
                 STATUS_CODES.START
             )
@@ -453,7 +454,12 @@ def request_cleanup(
     if __debug__:
         log.debug("request_cleanup()")
     first_error: Optional[Exception] = None
-    for engine in tuple(_ENGINE_REGISTRY["engines"].values()):
+    engines = (
+        _ENGINE_REGISTRY["engines"]
+        if dbSessionsContainer is None
+        else dbSessionsContainer._engines
+    )
+    for engine in tuple(engines.values()):
         try:
             engine.request_end(request, dbSessionsContainer=dbSessionsContainer)
         except Exception as exc:
@@ -517,6 +523,7 @@ class DbSessionsContainer(object):
 
     _engine_status_tracker: "EngineStatusTracker"
     _request: "Request"
+    _engines: Dict[str, "EngineWrapper"]
     _sessions: Dict[str, "Session"]
 
     def __init__(self, request: "Request"):
@@ -524,19 +531,20 @@ class DbSessionsContainer(object):
         :param request: The active Pyramid `Request` instance.
         """
         self._request = request
+        self._engines = {}
         self._sessions = {}
-
-        # build a tracker
-        _engine_status_tracker = EngineStatusTracker()
-        for engine_name in _ENGINE_REGISTRY["engines"].keys():
-            _engine_status_tracker.engines[engine_name] = STATUS_CODES.INIT
-        self._engine_status_tracker = _engine_status_tracker
+        self._engine_status_tracker = EngineStatusTracker()
+        self._engine_status_tracker.engines = dict.fromkeys(
+            _ENGINE_REGISTRY["engines"], STATUS_CODES.INIT
+        )
         # register our cleanup
         _ensure_cleanup(request, self)
 
     def _get_initialized_session(self, engine_name: str) -> "TYPES_SESSION":
         """Return the scoped proxy or the session owned by this request."""
-        engine = get_wrapped_engine(engine_name)
+        engine = self._engines.get(engine_name)
+        if engine is None:
+            engine = get_wrapped_engine(engine_name)
         engine.request_start(self._request, self)
         if engine.is_scoped:
             return engine.session
