@@ -9,6 +9,13 @@ under [Pyramid](https://github.com/pylons/pyramid).  It ships with first-party
 support for "reader", "writer" and "logger" concepts - but can be extended to
 support any design.
 
+* "reader" for high-read clusters
+* "writer" for a writeable node
+* "logger" for an autocommit node
+
+The package does not restrict write operations on the reader nodes.
+You can/should enforce that with database permissions.
+
 SQLAssist also offers some utility mixin/base classes for SQLAlchemy
 applications that are useful for debugging applications. A debugtoolbar panel
 is included as well, which can be used to further aid in development.
@@ -17,14 +24,7 @@ This package has been working in production environments for many years.
 
 PRs are always appreciated.
 
-Recent changes:
-
-With `v0.16.0`, SQLAlchemy 2.0 and Python 3.7 are required.
-
-With `v0.13.0`, SQLAlchemy 1.3.0 and zope.sqlalchemy 1.2.0 are required.
-
-With `v0.12.0`, there have been some API changes and the introduction of a
-`pyramid_debugtoolbar` panel.
+As of `v1.0.0`, SQLAlchemy 2.0 and Python 3.7 are required.
 
 
 # WARNING
@@ -143,7 +143,7 @@ The `DbSessionsContainer` exposes some methods:
 * `reader` - property. memoized access to "reader" connection
 * `writer` - property. memoized access to "writer" connection
 * `logger` - property. memoized access to "logger" connection
-* `any` - property. invokes `get_any()`
+* `any` - property. invokes `get_any()`, which chooses between "reader" and "writer" (not logger)
 
 * `get_reader` - method. lazy access to "reader" connection
 * `get_writer` - method. lazy access to "writer" connection
