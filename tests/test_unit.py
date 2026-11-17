@@ -445,7 +445,6 @@ class TestEngineLifecycle(unittest.TestCase):
             original = interface.get_wrapped_engine()
             options: Tuple[Tuple[Dict[str, Any], str], ...] = (
                 ({"is_readonly": True}, "is_readonly=True"),
-                ({"is_autocommit": True}, "is_autocommit=True"),
                 ({"sa_sessionmaker_params": {"autocommit": True}}, "autocommit=True"),
             )
             for is_scoped in (False, True):
@@ -456,6 +455,33 @@ class TestEngineLifecycle(unittest.TestCase):
                                 "reader", engine, is_scoped=is_scoped, **kwargs
                             )
                         self.assertIs(interface.get_wrapped_engine(), original)
+
+    def test_autocommit_writes_survive_rollback(self) -> None:
+        """Persist flushed logger writes without changing the supplied engine."""
+        for is_scoped in (False, True):
+            with self.subTest(is_scoped=is_scoped):
+                engine = sqlalchemy.create_engine("sqlite://")
+                self.addCleanup(engine.dispose)
+                with engine.begin() as connection:
+                    connection.execute(sqlalchemy.text("CREATE TABLE logs (message TEXT)"))
+                with patch.object(
+                    interface, "_ENGINE_REGISTRY", {"!default": None, "engines": {}}
+                ):
+                    interface.initialize_engine(
+                        "logger", engine, is_autocommit=True, is_scoped=is_scoped
+                    )
+                    session = interface.get_session("logger")
+                    try:
+                        session.execute(sqlalchemy.text("INSERT INTO logs VALUES ('saved')"))
+                        session.rollback()
+                    finally:
+                        session.close()
+                    self.assertNotIn("isolation_level", engine.get_execution_options())
+                    with engine.connect() as connection:
+                        self.assertEqual(
+                            connection.execute(sqlalchemy.text("SELECT message FROM logs")).scalar(),
+                            "saved",
+                        )
 
     def test_mapper_failure_preserves_existing_registration(self) -> None:
         """Keep the registered default when a replacement fails to initialize."""

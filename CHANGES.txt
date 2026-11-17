@@ -1,3 +1,7 @@
+1.1.0
+    * Support is_autocommit=True using DBAPI AUTOCOMMIT isolation for independent logger writes.
+      ORM writes require an explicit flush; session autocommit=True remains unsupported.
+
 1.0.0
     * Reject legacy read-only and session autocommit options during engine initialization on SQLAlchemy 2.x.
     * Resolve request engines lazily and clean up through the original wrapper after replacement.

@@ -347,8 +347,10 @@ def initialize_engine(
     :param sa_sessionmaker_params: dict. Passed to SQLAlchemy's ``sessionmaker``.
     :param is_readonly: Legacy option that enabled session autocommit.
         SQLAlchemy 2.x does not support this option.
-    :param is_autocommit: Legacy session autocommit option. Only false or unset
-        values are supported by SQLAlchemy 2.x.
+    :param is_autocommit: Enable DBAPI autocommit isolation for this wrapper.
+        Statements execute independently of transactions; ORM writes still require
+        flush(). Uses an engine execution-options copy, preserving the supplied
+        engine configuration. The copy shares the original connection pool.
     :param is_scoped: boolean. default `True`. Controls whether or not sessions
         are scoped_sessions.
     :param is_configure_mappers: boolean. default `True`.  Will call
@@ -374,7 +376,7 @@ def initialize_engine(
             "does not support"
         )
     if is_autocommit:
-        raise ValueError("SQLAlchemy 2.x does not support is_autocommit=True")
+        sa_engine = sa_engine.execution_options(isolation_level="AUTOCOMMIT")
 
     wrapped_engine = EngineWrapper(engine_name, sa_engine)
     sa_sessionmaker_params = dict(sa_sessionmaker_params or {})
